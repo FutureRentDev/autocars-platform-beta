@@ -1,0 +1,17 @@
+{
+  "name": "AutoCars",
+  "tagline": "Your next chapter starts here.",
+  "slug": "autocars",
+  "scheme": "autocars",
+  "domain": "autocars.co.za",
+  "supportEmail": "",
+  "country": "ZA",
+  "currency": "ZAR",
+  "locale": "en-ZA",
+  "primary": "#f2f2ee",
+  "background": "#0a0a0a",
+  "adFee": 500,
+  "adDays": 30,
+  "iosBundleIdentifier": "za.co.autocars.app",
+  "androidPackage": "za.co.autocars.app"
+}

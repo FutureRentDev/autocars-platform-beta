@@ -1,0 +1,280 @@
+{
+  "source": "https://api.autocars.co.za/vehicles",
+  "fetchedAt": "2026-11-15T11:54:11.424Z",
+  "note": "Read-only staging report. No records have been imported or published. Fill missing fields, resolve warnings and verify availability before importing.",
+  "vehicles": [
+    {
+      "sourceId": 38,
+      "title": "2023 Volkswagen Polo Vivo",
+      "sourceYear": 2026,
+      "titleYear": 2023,
+      "variant": "Hatch 1.4 Trendline",
+      "price": 160000,
+      "mileage": 69000,
+      "fuel": "Petrol",
+      "transmission": "Manual",
+      "imageUrls": [
+        "https://storage-autocars.ams1.vultrobjects.com/media/ec7008633b106bc8a31caaba9b03625f",
+        "https://storage-autocars.ams1.vultrobjects.com/media/9247d20e0082cecb0a468fbf15b7e482",
+        "https://storage-autocars.ams1.vultrobjects.com/media/49b8aecd2dba0ddbd11790614052f880",
+        "https://storage-autocars.ams1.vultrobjects.com/media/fc425b1b6a0c5ce0e8e42d0a387ee10b",
+        "https://storage-autocars.ams1.vultrobjects.com/media/a6797afcb0e88871da7f9103df0ff207",
+        "https://storage-autocars.ams1.vultrobjects.com/media/0e0e377fc4f28b90c4e077b82f1f418a",
+        "https://storage-autocars.ams1.vultrobjects.com/media/66f1d29a9ef961b3286b7026a0bc0463",
+        "https://storage-autocars.ams1.vultrobjects.com/media/fe8e0a60a108a8485f94f597267a0e23",
+        "https://storage-autocars.ams1.vultrobjects.com/media/5aa6b0eb8d9179b6142e48faff711a61",
+        "https://storage-autocars.ams1.vultrobjects.com/media/32c165dfb74d069a4571b8925abed82d",
+        "https://storage-autocars.ams1.vultrobjects.com/media/18922d26c8baec6c55ad0beb277b4976",
+        "https://storage-autocars.ams1.vultrobjects.com/media/d2840cb4cfe010ec4007e8af09d1253f",
+        "https://storage-autocars.ams1.vultrobjects.com/media/ec8c4311e11e99d2f8c5eb40bb54f0fc",
+        "https://storage-autocars.ams1.vultrobjects.com/media/141031297547cc7aee85bbcf228a5eb4",
+        "https://storage-autocars.ams1.vultrobjects.com/media/d230f5e9c64ccbecd663f044581eb7d5",
+        "https://storage-autocars.ams1.vultrobjects.com/media/d85c41332d8ed55e0c84c52672ee2f1b",
+        "https://storage-autocars.ams1.vultrobjects.com/media/9dcf8be530d6238a102f4e8937961465",
+        "https://storage-autocars.ams1.vultrobjects.com/media/ca8f2cde3cbc2696753ff012a5ebc804",
+        "https://storage-autocars.ams1.vultrobjects.com/media/ad18f74e50605c52819dcfdf0285e042",
+        "https://storage-autocars.ams1.vultrobjects.com/media/b84afc5fde7a374ef085f98d63193a92",
+        "https://storage-autocars.ams1.vultrobjects.com/media/0dc2f999aca4c4819017a052ba7260be"
+      ],
+      "warnings": [
+        "Seller details, province, city, body type and description are absent from the public source.",
+        "Title year 2023 conflicts with year field 2026."
+      ],
+      "required": {
+        "make": null,
+        "model": null,
+        "year": null,
+        "bodyType": null,
+        "province": null,
+        "city": null,
+        "description": null,
+        "sellerName": null,
+        "phone": null
+      }
+    },
+    {
+      "sourceId": 39,
+      "title": "2023 Volkswagen Polo Vivo",
+      "sourceYear": 2023,
+      "titleYear": 2023,
+      "variant": "Hatch  1.4 Trendline",
+      "price": 165000,
+      "mileage": 84000,
+      "fuel": "Petrol",
+      "transmission": "Manual",
+      "imageUrls": [
+        "https://storage-autocars.ams1.vultrobjects.com/media/48888ca5d62f830a2f840c9c4f41d555",
+        "https://storage-autocars.ams1.vultrobjects.com/media/be7ab1ee87d7e5fad54ecbb7040ef88e",
+        "https://storage-autocars.ams1.vultrobjects.com/media/e9a36876e9b7fb8fd96286f5b35a8b63",
+        "https://storage-autocars.ams1.vultrobjects.com/media/7bbdd15195a65ec0ac3f8d4cf9b2dbb8",
+        "https://storage-autocars.ams1.vultrobjects.com/media/bfcec94be144f4e51c058b09e2d3a6b6",
+        "https://storage-autocars.ams1.vultrobjects.com/media/eb22d5985482e8f6d8203d4b1f25c37e",
+        "https://storage-autocars.ams1.vultrobjects.com/media/09b7bad8d3384c23d03595c7d0985097",
+        "https://storage-autocars.ams1.vultrobjects.com/media/affe30e1e9502b3f9550db7dc822fdc4",
+        "https://storage-autocars.ams1.vultrobjects.com/media/75d0f1c3e404115205f33f64473740a6",
+        "https://storage-autocars.ams1.vultrobjects.com/media/146db8fa1f6e402abc0517940781a6c6",
+        "https://storage-autocars.ams1.vultrobjects.com/media/4b64e47639e26a5950e7cba480bd3577",
+        "https://storage-autocars.ams1.vultrobjects.com/media/f956603ff5605481982ae9483b24d159",
+        "https://storage-autocars.ams1.vultrobjects.com/media/f87b47e7343ededc1b7a6bc091095e2a",
+        "https://storage-autocars.ams1.vultrobjects.com/media/1928412052ed2ce09c4aedb33e2aacbe",
+        "https://storage-autocars.ams1.vultrobjects.com/media/82b3feff0b27edcced3200d87cfc6d15",
+        "https://storage-autocars.ams1.vultrobjects.com/media/e91cc4b045402cc581a50e20fc08dd24",
+        "https://storage-autocars.ams1.vultrobjects.com/media/82f210b9abb254e72b9392f48e835836",
+        "https://storage-autocars.ams1.vultrobjects.com/media/47c9a8c3953fab12fedd4514c935bf70",
+        "https://storage-autocars.ams1.vultrobjects.com/media/d9903afe9ee6fecbae12f52327f7559b",
+        "https://storage-autocars.ams1.vultrobjects.com/media/b8df9d637dd95df8a5d0944bcbe5218e",
+        "https://storage-autocars.ams1.vultrobjects.com/media/14d5c7e8f3b9304423ef40d1064b7a08"
+      ],
+      "warnings": [
+        "Seller details, province, city, body type and description are absent from the public source."
+      ],
+      "required": {
+        "make": null,
+        "model": null,
+        "year": null,
+        "bodyType": null,
+        "province": null,
+        "city": null,
+        "description": null,
+        "sellerName": null,
+        "phone": null
+      }
+    },
+    {
+      "sourceId": 40,
+      "title": "2025 Nissan Magnite",
+      "sourceYear": 2025,
+      "titleYear": 2025,
+      "variant": "1.0 Turbo Visia",
+      "price": 185000,
+      "mileage": 8300,
+      "fuel": "Petrol",
+      "transmission": "Manual",
+      "imageUrls": [
+        "https://storage-autocars.ams1.vultrobjects.com/media/546e0734a2903ee1db474d270a34653b",
+        "https://storage-autocars.ams1.vultrobjects.com/media/51830c27318e4eac3040f269842745bd",
+        "https://storage-autocars.ams1.vultrobjects.com/media/4f8a0299a408e99e4a410e621c620627",
+        "https://storage-autocars.ams1.vultrobjects.com/media/50dfb6f2c076b22233464e55633403bb",
+        "https://storage-autocars.ams1.vultrobjects.com/media/feca1f6d9cada85652f0bdc28edd56c3",
+        "https://storage-autocars.ams1.vultrobjects.com/media/8a134c76886864db13b247392f43ca51",
+        "https://storage-autocars.ams1.vultrobjects.com/media/fded58ec784e4dbda4fc0f238508a83d",
+        "https://storage-autocars.ams1.vultrobjects.com/media/e51422ef635bb8b9ca62afb52c5296f8",
+        "https://storage-autocars.ams1.vultrobjects.com/media/08ed2ec5651f0d9e341b2ac8fe86c6f3",
+        "https://storage-autocars.ams1.vultrobjects.com/media/53b0deb1159fa23c72e80034652f1385",
+        "https://storage-autocars.ams1.vultrobjects.com/media/430133dca52ae56cb41280835e8527c2",
+        "https://storage-autocars.ams1.vultrobjects.com/media/4c7d4eaba82821ded4e4f585d7fd3a1c",
+        "https://storage-autocars.ams1.vultrobjects.com/media/31c5ca2ef185420e16830acf922da544",
+        "https://storage-autocars.ams1.vultrobjects.com/media/d271b51c9b9a5d4da96ede8403d22d62",
+        "https://storage-autocars.ams1.vultrobjects.com/media/c005f23d36afe8be0b843f0115c436c1",
+        "https://storage-autocars.ams1.vultrobjects.com/media/b56705daea1e1f5615698d571d43b28c",
+        "https://storage-autocars.ams1.vultrobjects.com/media/8e1c7b150002ab857148c2f7666bf957",
+        "https://storage-autocars.ams1.vultrobjects.com/media/c1cf7fb70279a44f4327d074753f07fd",
+        "https://storage-autocars.ams1.vultrobjects.com/media/b9fb18c505f2734979a768e61af970ab",
+        "https://storage-autocars.ams1.vultrobjects.com/media/08629ae7da4e1afbf7a33b009547e81a",
+        "https://storage-autocars.ams1.vultrobjects.com/media/f3830742f9ee131daf3f8c390414b0cf"
+      ],
+      "warnings": [
+        "Seller details, province, city, body type and description are absent from the public source."
+      ],
+      "required": {
+        "make": null,
+        "model": null,
+        "year": null,
+        "bodyType": null,
+        "province": null,
+        "city": null,
+        "description": null,
+        "sellerName": null,
+        "phone": null
+      }
+    },
+    {
+      "sourceId": 41,
+      "title": "2023 Hyundai Grand i10",
+      "sourceYear": 2023,
+      "titleYear": 2023,
+      "variant": "1.0 Motion Hatch",
+      "price": 160000,
+      "mileage": 60000,
+      "fuel": "Petrol",
+      "transmission": "Manual",
+      "imageUrls": [
+        "https://storage-autocars.ams1.vultrobjects.com/media/a2d578b365a6e8720cf7618f2927b880",
+        "https://storage-autocars.ams1.vultrobjects.com/media/76ffa5d16b76e8eac9e0a24fb2884216",
+        "https://storage-autocars.ams1.vultrobjects.com/media/ac39536b833586a52ed1b5beed649ace",
+        "https://storage-autocars.ams1.vultrobjects.com/media/6344c524839428a98058ce8086b8479c",
+        "https://storage-autocars.ams1.vultrobjects.com/media/7402b0f58aeae9b7fd8b3ded5d1b00fb",
+        "https://storage-autocars.ams1.vultrobjects.com/media/bb0bafce78c6747f9bbf2d184e7e309f",
+        "https://storage-autocars.ams1.vultrobjects.com/media/6bc4866e2a742080cc60a00be7c9f52c",
+        "https://storage-autocars.ams1.vultrobjects.com/media/9a8586855d0485658e931961edbd8af2",
+        "https://storage-autocars.ams1.vultrobjects.com/media/5c26600ed17fa1460d9d42d1d6638186",
+        "https://storage-autocars.ams1.vultrobjects.com/media/be4bc1c9f4cab82ed69356e5b766bf7c",
+        "https://storage-autocars.ams1.vultrobjects.com/media/458711b19f9980ee79dd6a692c64fa50",
+        "https://storage-autocars.ams1.vultrobjects.com/media/4444307d4976dafc299bf12b967a89fe",
+        "https://storage-autocars.ams1.vultrobjects.com/media/39384f585aa41f87cd79cd7f75ec5472",
+        "https://storage-autocars.ams1.vultrobjects.com/media/407ae8db82bc17ab0f155e4a68588077",
+        "https://storage-autocars.ams1.vultrobjects.com/media/ae1cc45b2dfbe42558e1fb2b42b1d4b3",
+        "https://storage-autocars.ams1.vultrobjects.com/media/52a3c1f9726994557d7bd8024cd84976",
+        "https://storage-autocars.ams1.vultrobjects.com/media/5486e3a90dccae08fa140dc20615d501",
+        "https://storage-autocars.ams1.vultrobjects.com/media/0ad0726ed3127e305e5de9e605ff0d1f",
+        "https://storage-autocars.ams1.vultrobjects.com/media/376cab65b2a4226554bcc418548fb7f1",
+        "https://storage-autocars.ams1.vultrobjects.com/media/d057c6027f6e0299c6486f7d53184c01"
+      ],
+      "warnings": [
+        "Seller details, province, city, body type and description are absent from the public source."
+      ],
+      "required": {
+        "make": null,
+        "model": null,
+        "year": null,
+        "bodyType": null,
+        "province": null,
+        "city": null,
+        "description": null,
+        "sellerName": null,
+        "phone": null
+      }
+    },
+    {
+      "sourceId": 42,
+      "title": "2019 Land Rover Disovery",
+      "sourceYear": 2019,
+      "titleYear": 2019,
+      "variant": "HSE TD6",
+      "price": 600000,
+      "mileage": 101000,
+      "fuel": "Diesel",
+      "transmission": "Automatic",
+      "imageUrls": [],
+      "warnings": [
+        "Seller details, province, city, body type and description are absent from the public source.",
+        "No source photos."
+      ],
+      "required": {
+        "make": null,
+        "model": null,
+        "year": null,
+        "bodyType": null,
+        "province": null,
+        "city": null,
+        "description": null,
+        "sellerName": null,
+        "phone": null
+      }
+    },
+    {
+      "sourceId": 43,
+      "title": "2023 Volkswagen Polo Vivo",
+      "sourceYear": 2023,
+      "titleYear": 2023,
+      "variant": "Hatch 1.6 Comfortline",
+      "price": 218000,
+      "mileage": 37000,
+      "fuel": "Petrol",
+      "transmission": "Automatic",
+      "imageUrls": [],
+      "warnings": [
+        "Seller details, province, city, body type and description are absent from the public source.",
+        "No source photos."
+      ],
+      "required": {
+        "make": null,
+        "model": null,
+        "year": null,
+        "bodyType": null,
+        "province": null,
+        "city": null,
+        "description": null,
+        "sellerName": null,
+        "phone": null
+      }
+    },
+    {
+      "sourceId": 44,
+      "title": "2013 Mercedes-Benz A-Class",
+      "sourceYear": 2013,
+      "titleYear": 2013,
+      "variant": "A180CDI Elegance",
+      "price": 179999,
+      "mileage": 155000,
+      "fuel": "Diesel",
+      "transmission": "Automatic",
+      "imageUrls": [],
+      "warnings": [
+        "Seller details, province, city, body type and description are absent from the public source.",
+        "No source photos."
+      ],
+      "required": {
+        "make": null,
+        "model": null,
+        "year": null,
+        "bodyType": null,
+        "province": null,
+        "city": null,
+        "description": null,
+        "sellerName": null,
+        "phone": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "autocars-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.4.0 <25"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web 'npm run dev -w @autocars/api' 'npm run dev -w @autocars/web'",
+    "mobile": "node scripts/mobile.mjs",
+    "build": "npm run build -w @autocars/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test:tooling && npm run test -w @autocars/api",
+    "admin": "npm run admin -w @autocars/api",
+    "start": "npm run start -w @autocars/api",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,css,json}\" \"packages/**/*.{ts,json}\" \"config/*.json\" \"scripts/*.mjs\" \"*.json\"",
+    "brand:assets": "node scripts/brand-assets.mjs",
+    "backup": "npm run backup -w @autocars/api --",
+    "migration:prepare": "node scripts/prepare-legacy.mjs",
+    "migration:import": "node scripts/import-legacy.mjs",
+    "mobile:tunnel": "node scripts/mobile.mjs --tunnel",
+    "setup:local": "node scripts/setup-local.mjs",
+    "expo:login": "npm exec -w @autocars/mobile -- expo login",
+    "test:tooling": "node --test scripts/test/*.test.mjs",
+    "check": "npm run typecheck && npm test && npm run build && npm run test:pwa && npm exec -w @autocars/mobile -- expo install --check && npm run export -w @autocars/mobile && npm audit",
+    "mail:start": "docker compose -f compose.dev.yml up -d",
+    "mail:stop": "docker compose -f compose.dev.yml stop",
+    "dev:mail": "node scripts/dev-mail.mjs",
+    "setup:push": "node scripts/setup-push.mjs",
+    "test:pwa": "node scripts/pwa-check.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "concurrently": "^9.2.1",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "glob": "^14.0.6",
+    "minimatch": "^11.0.8",
+    "deepmerge": "4.1.1"
+  }
+}
