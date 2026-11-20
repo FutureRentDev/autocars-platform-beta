@@ -35,6 +35,7 @@ Web: session cookie and an allowed `Origin` on writes. Native: `Authorization: B
 | GET / POST | `/me/searches` | Read/create saved search; POST name, filters; max 30 per account |
 | DELETE | `/me/searches/:id` | Remove own saved search |
 | GET | `/me/leads` | Enquiries on current user's listings |
+| GET | `/me/inbox` | Authorised conversation previews and unread total; buyer/seller threads, or all threads for AutoCars staff |
 | PATCH | `/me/leads/:id` | Listing owner; status=new/contacted/closed |
 | GET | `/me/export` | Account, listings, submitted enquiries, searches and favourites |
 | DELETE | `/me` | Confirm password; removes own non-admin account |
@@ -71,6 +72,8 @@ See [payment and push setup](live-push-payments.md) for merchant credentials, ca
 
 - `GET /api/me/enquiries` — enquiries the signed-in user sent, with vehicle details.
 - `GET|POST /api/leads/:id/messages` — chat thread for an enquiry. Only the buyer, listing owner or an admin may read or post; messages notify the other party live over `/api/live` (`enquiries` topic) and via push.
+
+The GET response is `{items,vehicle:{id,title},truncated}`. `items` begins with the original enquiry (a stable derived message, so existing conversations need no migration), followed by up to 500 recent replies in chronological order. `truncated` indicates omitted older replies. The title contains the vehicle year, make, model and optional variant; the listing ID supports opening the vehicle. Reading the initial enquiry clears its unread count. Submitting an enquiry queues push only for the receiving listing owner, including when the sender is an administrator; staff who join later chats still receive replies.
 - `GET /api/push/config` — public web-push capability and VAPID public key.
 - `POST /api/me/push` — register a web subscription or Expo token for the authenticated user.
 - `DELETE /api/me/push/:id` — remove an owned device subscription.

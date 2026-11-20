@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2022", "DOM"], "types": ["react"] },
+  "compilerOptions": { "lib": ["ES2022", "DOM"], "types": ["react", "node"] },
   "include": ["**/*.ts", "**/*.tsx", "../../packages/core/src"]
 }

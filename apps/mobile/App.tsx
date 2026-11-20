@@ -22,6 +22,7 @@ import {
   TextInput,
   View,
   KeyboardAvoidingView,
+  Keyboard,
   Share,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -37,6 +38,7 @@ import {
   type LiveStatus,
   ApiError,
   LiveClient,
+  notificationRoute,
   brand,
   bodyTypes,
   canSell,
@@ -52,6 +54,7 @@ import {
   type Lead,
   type Enquiry,
   type ChatMessage,
+  type ChatThread,
   type BusinessApplication,
   type BusinessStatus,
 } from "@autocars/core";
@@ -416,7 +419,12 @@ function AutoCars() {
     [renewCard, setRenewCard] = useState(""),
     [renewMsg, setRenewMsg] = useState(""),
     [enquiries, setEnquiries] = useState<Enquiry[]>([]),
-    [chat, setChat] = useState<{ id: string; title: string } | null>(null),
+    [chat, setChat] = useState<{
+      id: string;
+      title: string;
+      listingId: string;
+    } | null>(null),
+    [chatTruncated, setChatTruncated] = useState(false),
     [chatMsgs, setChatMsgs] = useState<ChatMessage[]>([]),
     [chatDraft, setChatDraft] = useState(""),
     [toast, setToast] = useState<{ title: string; message: string } | null>(
@@ -436,29 +444,154 @@ function AutoCars() {
     else setToast({ title, message });
   };
   const [pushBusy, setPushBusy] = useState(false),
-    [notices, setNotices] = useState<any[]>([]);
+    [notices, setNotices] = useState<any[]>([]),
+    [notificationPath, setNotificationPath] = useState<string | null>(null);
+  const contentScroll = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const chatScroll = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const followChat = useRef(true);
+  const forceChatLatest = useRef(true);
+  const scrollChatToLatest = (animated = false) => {
+    if (followChat.current || forceChatLatest.current)
+      chatScroll.current?.scrollToEnd({ animated });
+  };
+  useEffect(() => {
+    followChat.current = true;
+    forceChatLatest.current = true;
+  }, [chat?.id]);
+  const accountScroll = useRef(false);
+  const businessPosition = useRef(0);
+  const notificationNavigation = useRef(0);
+  const chatListing = useRef<{ listing: Listing; navigation: number } | null>(
+    null,
+  );
+  function closeChat() {
+    ++notificationNavigation.current;
+    chatListing.current = null;
+    Keyboard.dismiss();
+    setChat(null);
+  }
   useEffect(() => {
     let cleanup = () => {};
     let disposed = false;
-    void listenForNotifications((path) => {
-      if (path.startsWith("/cars/")) {
-        void api
-          .get(path)
-          .then((r) => openCar(r.listing))
-          .catch(report);
-      } else {
-        setTab("Account");
-        setShowMine(path.startsWith("/workspace"));
-      }
-    }).then((fn) => {
-      if (disposed) fn();
-      else cleanup = fn;
-    });
+    void listenForNotifications(setNotificationPath)
+      .then((fn) => {
+        if (disposed) fn();
+        else cleanup = fn;
+      })
+      .catch((e) => {
+        if (!disposed) setError((e as Error).message);
+      });
     return () => {
       disposed = true;
       cleanup();
     };
   }, []);
+  useEffect(() => {
+    if (!ready || !notificationPath) return;
+    const target = notificationRoute(notificationPath);
+    if (!target) {
+      setNotificationPath(null);
+      return;
+    }
+    if (target.kind !== "home" && !user) {
+      setTab("Account");
+      return; // Resume this destination after session restoration/sign-in.
+    }
+    setNotificationPath(null);
+    const navigation = ++notificationNavigation.current;
+    setDetail(null);
+    setChat(null);
+    setFilterOpen(false);
+    setFinanceOpen(false);
+    setCompareOpen(false);
+    setLegalOpen(false);
+    setDeleteOpen(false);
+    setRenewTarget(null);
+    void (async () => {
+      if (target.kind === "home") return goHome();
+      if (target.kind === "chat") {
+        setTab("Inbox");
+        setChatMsgs([]);
+        setChatDraft("");
+        const r = await api.get<ChatThread>(`/leads/${target.id}/messages`);
+        if (notificationNavigation.current !== navigation) return;
+        setChatMsgs(r.items);
+        setChatTruncated(r.truncated);
+        setChat({
+          id: target.id,
+          title: r.vehicle.title,
+          listingId: r.vehicle.id,
+        });
+        void refreshAccount();
+      } else if (target.kind === "listing") {
+        const r = await api.get(`/listings/${target.id}`);
+        if (notificationNavigation.current === navigation) openCar(r.listing);
+      } else if (target.kind === "payment") {
+        setTab("Account");
+        setShowMine(true);
+        const { payment } = await api.get(`/payments/${target.id}`);
+        if (notificationNavigation.current !== navigation) return;
+        if (payment.listingId) {
+          const r = await api.get(`/listings/${payment.listingId}`);
+          if (notificationNavigation.current === navigation) openCar(r.listing);
+        } else
+          notify(
+            "Advertisement payment",
+            payment.error || `Payment status: ${payment.status}`,
+          );
+      } else {
+        if (
+          target.kind === "workspace" &&
+          ["businesses", "payments", "users", "audit"].includes(target.tab)
+        ) {
+          // These staff tools are provided by the web administration workspace.
+          const web = new URL(base);
+          if (__DEV__ && web.port === "4000") web.port = "5173";
+          await Linking.openURL(
+            `${web.origin}/workspace?tab=${encodeURIComponent(target.tab)}`,
+          );
+          return;
+        }
+        setTab(
+          target.kind === "workspace" && target.tab === "leads"
+            ? "Inbox"
+            : "Account",
+        );
+        setShowMine(
+          target.kind === "workspace" &&
+            ["inventory", "overview"].includes(target.tab),
+        );
+        if (target.kind === "workspace" && target.tab === "business") {
+          accountScroll.current = true;
+          requestAnimationFrame(() => {
+            if (businessPosition.current > 0)
+              contentScroll.current?.scrollTo({
+                y: businessPosition.current,
+                animated: true,
+              });
+          });
+        } else contentScroll.current?.scrollTo({ y: 0, animated: false });
+      }
+    })().catch((e) => {
+      if (notificationNavigation.current === navigation) report(e);
+    });
+  }, [ready, user?.id, notificationPath]);
+  function goHome() {
+    ++notificationNavigation.current;
+    setNotificationPath(null);
+    chatListing.current = null;
+    accountScroll.current = false;
+    setChat(null);
+    setDetail(null);
+    setTab("Explore");
+    setFilterOpen(false);
+    setFinanceOpen(false);
+    setCompareOpen(false);
+    setQuery("");
+    setFilters({});
+    contentScroll.current?.scrollTo({ y: 0, animated: true });
+    void load({}, 1);
+  }
   const report = (e: unknown) => {
     const m = (e as Error).message || "Please try again.";
     setError(m);
@@ -472,11 +605,29 @@ function AutoCars() {
   const unreadTotal =
     leads.reduce((n, l) => n + (l.unread || 0), 0) +
     enquiries.reduce((n, e) => n + (e.unread || 0), 0);
+  const financeNumber = (value: string) => {
+      const n = Number(value);
+      return value.trim() !== "" && Number.isFinite(n) ? Math.max(0, n) : null;
+    },
+    [fp, fd, fr, ft, fb] = [price, deposit, rate, term, balloon].map(
+      financeNumber,
+    ),
+    monthlyPayment =
+      fp !== null && fd !== null && fr !== null && ft !== null && fb !== null
+        ? payment(fp, fd, fr, ft, fb)
+        : null,
+    balloonPayment = fp !== null && fb !== null ? (fp * fb) / 100 : null;
   async function openChat(id: string, title: string) {
-    setChat({ id, title });
+    const navigation = ++notificationNavigation.current;
+    setChat(null);
+    setChatMsgs([]);
     setChatDraft("");
     try {
-      setChatMsgs((await api.get(`/leads/${id}/messages`)).items);
+      const r = await api.get<ChatThread>(`/leads/${id}/messages`);
+      if (notificationNavigation.current !== navigation) return;
+      setChatMsgs(r.items);
+      setChatTruncated(r.truncated);
+      setChat({ id, title: r.vehicle.title, listingId: r.vehicle.id });
       await refreshAccount();
     } catch (e) {
       report(e);
@@ -488,11 +639,12 @@ function AutoCars() {
     setBusy(true);
     try {
       await api.post(`/leads/${chat.id}/messages`, { body });
+      followChat.current = true;
+      forceChatLatest.current = true;
       setChatDraft("");
-      const r = await api.get<{ items: ChatMessage[] }>(
-        `/leads/${chat.id}/messages`,
-      );
+      const r = await api.get<ChatThread>(`/leads/${chat.id}/messages`);
       setChatMsgs(r.items);
+      setChatTruncated(r.truncated);
     } catch (e) {
       report(e);
     } finally {
@@ -501,16 +653,26 @@ function AutoCars() {
   }
   useEffect(() => {
     if (!chat) return;
+    let active = true;
     const t = setInterval(async () => {
       try {
-        const r = await api.get<{ items: ChatMessage[] }>(
-          `/leads/${chat.id}/messages`,
-        );
-        setChatMsgs(r.items);
+        const r = await api.get<ChatThread>(`/leads/${chat.id}/messages`);
+        if (active) {
+          setChatMsgs(r.items);
+          setChatTruncated(r.truncated);
+          setChat((current) =>
+            current?.id === chat.id
+              ? { ...current, title: r.vehicle.title, listingId: r.vehicle.id }
+              : current,
+          );
+        }
       } catch {}
     }, 5000);
-    return () => clearInterval(t);
-  }, [chat]);
+    return () => {
+      active = false;
+      clearInterval(t);
+    };
+  }, [chat?.id]);
   function clearAccount() {
     setUser(null);
     setSaved([]);
@@ -751,7 +913,7 @@ function AutoCars() {
       setPassword("");
       await refreshAccount();
       liveRef.current?.reconnect();
-      setTab("Saved");
+      if (!notificationPath) setTab("Saved");
     } catch (e) {
       report(e);
     } finally {
@@ -884,14 +1046,18 @@ function AutoCars() {
   }
   function nextStep() {
     if (step === 0) {
+      const year = Number(form.year),
+        price = Number(form.price),
+        mileage = Number(form.mileage);
       if (
         !form.make.trim() ||
         !form.model.trim() ||
-        Number(form.year) < 1900 ||
-        Number(form.year) > new Date().getFullYear() + 1 ||
-        Number(form.price) < 1000 ||
-        !form.mileage ||
-        Number(form.mileage) < 0
+        !form.mileage.trim() ||
+        ![year, price, mileage].every(Number.isFinite) ||
+        year < 1900 ||
+        year > new Date().getFullYear() + 1 ||
+        price < 1000 ||
+        mileage < 0
       ) {
         notify(
           "A few details are missing",
@@ -1009,7 +1175,13 @@ function AutoCars() {
     <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
       <StatusBar style="light" />
       <View style={s.header}>
-        <Image source={require("./assets/logo.png")} style={s.logo} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${brand.name} home`}
+          onPress={goHome}
+        >
+          <Image source={require("./assets/logo.png")} style={s.logo} />
+        </Pressable>
         <Pressable onPress={() => setFinanceOpen(true)}>
           <Text style={s.link}>Know your budget ↗</Text>
           <Text
@@ -1029,6 +1201,7 @@ function AutoCars() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
+          ref={contentScroll}
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
@@ -1828,7 +2001,19 @@ function AutoCars() {
                       </View>
                     ))}
                   {user.accountType === "business" && (
-                    <View style={s.panel}>
+                    <View
+                      style={s.panel}
+                      onLayout={(e) => {
+                        businessPosition.current = e.nativeEvent.layout.y;
+                        if (accountScroll.current) {
+                          contentScroll.current?.scrollTo({
+                            y: businessPosition.current,
+                            animated: true,
+                          });
+                          accountScroll.current = false;
+                        }
+                      }}
+                    >
                       <Text style={s.subtitle}>Business account</Text>
                       <Text style={s.small}>
                         {bizApp
@@ -2019,8 +2204,10 @@ function AutoCars() {
                       </>
                     )}
                     {notices.slice(0, 10).map((n) => (
-                      <View
+                      <Pressable
                         key={n.id}
+                        accessibilityRole="button"
+                        onPress={() => setNotificationPath(n.path)}
                         style={{
                           paddingVertical: 15,
                           borderTopWidth: 1,
@@ -2029,7 +2216,7 @@ function AutoCars() {
                       >
                         <Text style={s.label}>{n.title}</Text>
                         <Text style={s.small}>{n.body}</Text>
-                      </View>
+                      </Pressable>
                     ))}
                   </View>
                   <Button onPress={logout}>Sign out</Button>
@@ -2156,7 +2343,7 @@ function AutoCars() {
                       value={password}
                       onChange={setPassword}
                     />
-                  )}{" "}
+                  )}
                   {authMode === "register" && (
                     <CheckBox value={consent} onChange={setConsent}>
                       I accept the privacy notice and marketplace terms.
@@ -2560,18 +2747,11 @@ function AutoCars() {
             <View style={s.promo}>
               <Text style={s.lightEyebrow}>ESTIMATED MONTHLY PAYMENT</Text>
               <Text style={[s.title, { color: "#fff" }]}>
-                {money(
-                  payment(
-                    Math.max(0, Number(price)),
-                    Math.max(0, Number(deposit)),
-                    Math.max(0, Number(rate)),
-                    Number(term),
-                    Number(balloon),
-                  ),
-                )}
+                {monthlyPayment === null ? "—" : money(monthlyPayment)}
               </Text>
               <Text style={{ color: "#9b9b96", fontSize: 12 }}>
-                Final balloon: {money((Number(price) * Number(balloon)) / 100)}
+                Final balloon:{" "}
+                {balloonPayment === null ? "—" : money(balloonPayment)}
               </Text>
             </View>
             <Text style={s.disclaimer}>
@@ -2580,9 +2760,10 @@ function AutoCars() {
               costs with your lender.
             </Text>
             <Button
+              disabled={monthlyPayment === null}
               onPress={() => {
                 const f = {
-                  maxPrice: String(Math.max(0, Math.round(Number(price)))),
+                  maxPrice: String(Math.max(0, Math.round(fp ?? 0))),
                 };
                 setFilters(f);
                 setTab("Explore");
@@ -2738,21 +2919,93 @@ function AutoCars() {
       <Modal
         visible={!!chat}
         animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setChat(null)}
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+        onShow={() => {
+          forceChatLatest.current = true;
+          scrollChatToLatest();
+        }}
+        onRequestClose={closeChat}
+        onDismiss={() => {
+          const pending = chatListing.current;
+          chatListing.current = null;
+          if (pending && pending.navigation === notificationNavigation.current)
+            openCar(pending.listing);
+        }}
       >
-        <SafeAreaView style={s.screen}>
-          {modalHeader(chat?.title || "Conversation", () => setChat(null))}
-          <KeyboardAvoidingView
-            style={s.flex}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={80}
-          >
+        <KeyboardAvoidingView
+          style={s.screen}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+        >
+          <SafeAreaView style={s.flex}>
+            <View style={[s.row, s.modalHeader]}>
+              <Pressable
+                style={{ flex: 1 }}
+                accessibilityRole="link"
+                accessibilityLabel={`View listing: ${chat?.title || "vehicle"}`}
+                onPress={async () => {
+                  if (!chat) return;
+                  const listingId = chat.listingId;
+                  const navigation = ++notificationNavigation.current;
+                  Keyboard.dismiss();
+                  try {
+                    const r = await api.get(`/listings/${listingId}`);
+                    if (notificationNavigation.current === navigation) {
+                      if (Platform.OS === "ios")
+                        chatListing.current = {
+                          listing: r.listing,
+                          navigation,
+                        };
+                      setChat(null);
+                      if (Platform.OS !== "ios") openCar(r.listing);
+                    }
+                  } catch (e) {
+                    Alert.alert("Vehicle unavailable", (e as Error).message);
+                  }
+                }}
+              >
+                <Text style={s.subtitle} numberOfLines={2}>
+                  {chat?.title || "Conversation"}
+                </Text>
+                <Text style={s.link}>View vehicle ↗</Text>
+              </Pressable>
+              <Pressable accessibilityLabel="Close chat" onPress={closeChat}>
+                <Text style={s.close}>×</Text>
+              </Pressable>
+            </View>
             <ScrollView
+              ref={chatScroll}
               style={s.flex}
-              contentContainerStyle={{ padding: 20, gap: 10 }}
-              onContentSizeChange={() => {}}
+              contentContainerStyle={{
+                padding: 20,
+                gap: 10,
+                flexGrow: 1,
+                justifyContent: "flex-end",
+              }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={
+                Platform.OS === "ios" ? "interactive" : "on-drag"
+              }
+              onContentSizeChange={() => scrollChatToLatest()}
+              onLayout={() => scrollChatToLatest()}
+              scrollEventThrottle={16}
+              onScroll={({
+                nativeEvent: { contentOffset, contentSize, layoutMeasurement },
+              }) => {
+                followChat.current =
+                  contentSize.height -
+                    layoutMeasurement.height -
+                    contentOffset.y <
+                  80;
+                if (followChat.current) forceChatLatest.current = false;
+              }}
             >
+              {chatTruncated && (
+                <Text style={s.small}>
+                  Original enquiry and the latest 500 replies.
+                </Text>
+              )}
               {!chatMsgs.length && (
                 <Text style={[s.muted, { textAlign: "center", marginTop: 40 }]}>
                   No messages yet — say hello to get the conversation started.
@@ -2779,16 +3032,25 @@ function AutoCars() {
                 );
               })}
             </ScrollView>
-            <View style={s.chatBar}>
+            <View style={s.chatBar} onLayout={() => scrollChatToLatest()}>
               <TextInput
+                accessibilityLabel="Message"
                 style={s.chatInput}
                 value={chatDraft}
                 onChangeText={setChatDraft}
                 placeholder="Write a message…"
                 placeholderTextColor="#8d8d88"
                 multiline
+                maxLength={2000}
+                onFocus={() => {
+                  followChat.current = true;
+                  forceChatLatest.current = true;
+                  requestAnimationFrame(() => scrollChatToLatest());
+                }}
               />
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Send message"
                 style={[
                   s.chatSend,
                   (!chatDraft.trim() || busy) && { opacity: 0.4 },
@@ -2799,8 +3061,8 @@ function AutoCars() {
                 <Text style={s.chatSendText}>Send</Text>
               </Pressable>
             </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
       </Modal>
       {toast && (
         <View style={s.toastWrap} pointerEvents="none">
@@ -3151,6 +3413,7 @@ const s = StyleSheet.create({
   bubbleTime: { fontSize: 10, color: "#8d8d88", marginTop: 4 },
   bubbleOwnTime: { fontSize: 10, color: "#666", marginTop: 4 },
   chatBar: {
+    flexShrink: 0,
     flexDirection: "row",
     gap: 10,
     padding: 14,
@@ -3168,6 +3431,8 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     color: "#f2f2f0",
     fontSize: 14,
+    minHeight: 42,
+    textAlignVertical: "top",
     maxHeight: 100,
   },
   chatSend: {

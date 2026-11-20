@@ -1,0 +1,30 @@
+[Unit]
+Description=AutoCars beta API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=autocars
+Group=autocars
+WorkingDirectory=/home/autocars/platform-beta
+Environment=PATH=/opt/autocars-node/bin:/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=4010
+Environment=DATA_DIR=/home/autocars/platform-beta-data
+Environment=WEB_ORIGIN=https://beta-api.autocars.co.za
+Environment=TRUST_PROXY=true
+EnvironmentFile=/etc/autocars-beta.env
+ExecStart=/opt/autocars-node/bin/node /home/autocars/platform-beta/node_modules/tsx/dist/cli.mjs /home/autocars/platform-beta/apps/api/src/server.ts
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

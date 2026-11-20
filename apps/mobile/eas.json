@@ -17,11 +17,17 @@
       "environment": "preview"
     },
     "production": {
+      "distribution": "store",
+      "developmentClient": false,
       "autoIncrement": true,
       "environment": "production"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6759597993"
+      }
+    }
   }
 }

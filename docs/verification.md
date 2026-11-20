@@ -16,6 +16,14 @@ This report distinguishes automated checks from tests requiring the owner's devi
 
 Follow-up: corrected the shared live client's startup/cleanup to avoid discarded React development mounts opening WebSocket handshakes, and to close pending connections only after their handshake completes. Workspace TypeScript checks and all **19 tests** passed, including a new lifecycle regression test. Direct and Vite-proxied WebSocket connections on the owner's existing servers both returned `ready` and `pong`.
 
+Native push follow-up: the owner installed an iOS development build and registered one Expo device. A single diagnostic notification was queued through the existing API worker. Expo returned a ticket and an `ok` receipt, confirming handoff to the platform push service. The owner confirmed that this notification arrived on the iPhone, verifying end-to-end native push for that installed development build. Other devices and notification-event workflows still require acceptance testing. The test endpoint now rejects accounts with no registered device rather than claiming a push was queued; API TypeScript checks and both live/push tests passed after that change.
+
+Chat follow-up: corrected staff-message recipients. Staff outside the buyer/seller pair previously notified only the buyer, missing the seller's registered iPhone. Staff messages now notify both participants except the sender; participant replies notify only the other party. API TypeScript and all three live/push tests passed, including browser-cookie staff messaging, recipient-specific queued delivery and rejection of unrelated users. Physical-device confirmation of this specific chat workflow remains pending.
+
+Android/rendering follow-up: removed a literal space outside a native Text container in the authentication fragment and added a source check covering fragments. Android cloud builds now reject missing or mismatched Firebase client files and native registration reports actionable Firebase setup instructions. Expo config evaluation confirms the correct EAS project and Android package, but no local AutoCars Firebase client file is configured. Workspace TypeScript, **24 tests** (7 tooling + 17 API/client/config tests), and both native exports passed. A Firebase-enabled Android APK and physical-device push acceptance remain pending the owner's AutoCars Firebase configuration/FCM credential.
+
+Notification routing/home follow-up: new chat/enquiry pushes include exact conversation paths, listing alerts identify the vehicle, and business/payment notifications identify their destination. Native handlers queue destinations until authentication is ready; a PWA chat route and sign-in return paths are implemented. The native header logo returns to unfiltered Explore at the top. `npm run check` passed with **26 tests** (7 tooling + 19 API/client/config tests), web/PWA build and worker checks, both native exports, SDK dependency compatibility and zero audit vulnerabilities. Tests verify emitted chat paths and safe route parsing. Physical-device tap navigation remains an owner acceptance check; older delivered pushes retain their original generic paths.
+
 Earlier checks also covered Docker image construction, containerised tests and backup integrity. Those checks preceded the latest payment/push reconciliation; the final source was checked with the command above rather than rebuilding the Docker image again.
 
 ## Owner/device verification and release work remaining
@@ -28,3 +36,20 @@ Earlier checks also covered Docker image construction, containerised tests and b
 - Operator/legal details, real inventory, HTTPS deployment, signing, store review, refund/reconciliation procedures and production backup/restore acceptance.
 
 See [setup and remaining release requirements](live-push-payments.md) and [Expo Go commands](expo-go.md). No claim is made that these owner/device checks have already happened.
+
+
+## Follow-up — 17 November 2026
+
+`npm run check` passed: TypeScript, **27 tests** (7 tooling + 20 API/client/config), web/PWA build and worker checks, SDK compatibility, both native exports and zero known audit vulnerabilities. Tests cover notification permission before asynchronous networking, existing browser registration restoration, preserving queued deliveries on device reconnect, private inbox counts/read-state, joined staff reply notifications and the latest 500 messages in long conversations. A final native-only scroll adjustment was typechecked and re-exported afterward.
+
+Chat keyboard/scroll layout and the new global PWA Inbox badge still require physical-device/browser acceptance. The running API's read-only health and push-configuration checks succeeded; web push is enabled, but no browser subscription was present at inspection, so real browser delivery has not been claimed. No serving process was started or stopped by this follow-up.
+
+Enquiry-thread follow-up: `npm run check` passed with 27 tests after adding the derived opening enquiry, seller-only enquiry push recipients (including an admin as sender), and vehicle metadata for linked chat subjects. Existing-thread rendering, no repeated opening message and original-enquiry retention in long histories are asserted. A final iOS modal handoff adjustment then passed mobile TypeScript, all seven tooling checks and both native exports. Chat-title navigation on physical devices remains an owner acceptance check.
+
+## TestFlight/hosting preparation — 19 November 2026
+
+Production EAS profile now explicitly uses store distribution with the dev client disabled and targets App Store Connect app 6759597993. Expo authentication was verified for the linked owner; the two existing iOS EAS builds were internal development builds, and the production EAS environment had no variables. No cloud build or Apple submission was started without a working backend URL.
+
+Updated Expo to the SDK-recommended 58.0.26 and expo-dev-client 58.0.21. The complete `npm run check` then passed: 27 tests, TypeScript, web/PWA and worker verification, SDK compatibility, both native exports and zero known audit vulnerabilities. The current number-input source preserves empty strings while editing and converts at validation/submission.
+
+Prepared `render.yaml` and validated it against Render's official JSON Schema (2020-12). It defines a persistent single-instance Docker service for api.autocars.co.za. Private `.env.render` was created with mode 0600, verified ignored by Git, and contains no SMTP credentials yet. Secret values were not printed. Docker daemon was unavailable, so this final Docker source was not rebuilt locally. Hosting, DNS, SMTP and production physical-device acceptance remain pending the owner's setup.

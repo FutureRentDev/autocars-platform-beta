@@ -634,13 +634,42 @@ export function Detail() {
 }
 export function Finance() {
   const [params] = useSearchParams(),
-    [price, setPrice] = useState(Number(params.get("price")) || 350000),
-    [deposit, setDeposit] = useState(35000),
-    [rate, setRate] = useState(11.75),
+    requestedPrice = Number(params.get("price")),
+    [price, setPrice] = useState(
+      requestedPrice > 0 ? String(requestedPrice) : "350000",
+    ),
+    [deposit, setDeposit] = useState("35000"),
+    [rate, setRate] = useState("11.75"),
     [months, setMonths] = useState(72),
-    [balloon, setBalloon] = useState(0);
-  const amount = payment(price, deposit, rate, months, balloon),
-    total = amount * months + (price * balloon) / 100 + deposit;
+    [balloon, setBalloon] = useState("0");
+  const numeric = (value: string) => {
+      const n = Number(value);
+      return value.trim() !== "" && Number.isFinite(n) ? n : null;
+    },
+    bounded = (value: string, min: number, max: number) => {
+      const n = numeric(value);
+      return n !== null && n >= min && n <= max ? n : null;
+    },
+    optional = (value: string, min: number, max: number) =>
+      value.trim() === "" ? 0 : bounded(value, min, max),
+    p = bounded(price, 1000, 100000000),
+    d = p === null ? null : optional(deposit, 0, p),
+    r = bounded(rate, 0, 40),
+    b = optional(balloon, 0, 35),
+    result =
+      p !== null && d !== null && r !== null && b !== null
+        ? (() => {
+            const amount = payment(p, d, r, months, b),
+              total = amount * months + (p * b) / 100 + d;
+            return {
+              amount,
+              financed: Math.max(0, p - d),
+              balloon: (p * b) / 100,
+              interest: Math.max(0, total - p),
+              total,
+            };
+          })()
+        : null;
   return (
     <div className="wrap page">
       <Eyebrow>KNOW YOUR NUMBERS</Eyebrow>
@@ -669,7 +698,7 @@ export function Finance() {
               value: deposit,
               set: setDeposit,
               min: 0,
-              max: price,
+              max: p ?? 100000000,
               step: 1000,
               prefix: "R",
             },
@@ -702,11 +731,7 @@ export function Finance() {
                   min={x.min}
                   max={x.max}
                   step={x.step}
-                  onChange={(e) =>
-                    x.set(
-                      Math.min(x.max, Math.max(x.min, Number(e.target.value))),
-                    )
-                  }
+                  onChange={(e) => x.set(e.target.value)}
                 />
               </div>
               <input
@@ -715,8 +740,11 @@ export function Finance() {
                 min={x.min}
                 max={x.max > 1000000 ? 1500000 : x.max}
                 step={x.step}
-                value={x.value}
-                onChange={(e) => x.set(Number(e.target.value))}
+                value={Math.min(
+                  Math.max(numeric(x.value) ?? x.min, x.min),
+                  x.max > 1000000 ? 1500000 : x.max,
+                )}
+                onChange={(e) => x.set(String(Number(e.target.value)))}
               />
             </label>
           ))}
@@ -737,28 +765,30 @@ export function Finance() {
         <div className="finance-result">
           <Eyebrow>YOUR ESTIMATED MONTHLY PAYMENT</Eyebrow>
           <h2>
-            {money(amount)}
+            {result ? money(result.amount) : "—"}
             <small>/ month</small>
           </h2>
           <div>
             <span>Amount financed</span>
-            <b>{money(Math.max(0, price - deposit))}</b>
+            <b>{result ? money(result.financed) : "—"}</b>
           </div>
           <div>
             <span>Final balloon payment</span>
-            <b>{money((price * balloon) / 100)}</b>
+            <b>{result ? money(result.balloon) : "—"}</b>
           </div>
           <div>
             <span>Total interest</span>
-            <b>{money(Math.max(0, total - price))}</b>
+            <b>{result ? money(result.interest) : "—"}</b>
           </div>
           <div>
             <span>Total paid, including deposit</span>
-            <b>{money(total)}</b>
+            <b>{result ? money(result.total) : "—"}</b>
           </div>
-          <Link className="button light full" to={`/cars?maxPrice=${price}`}>
-            Find cars in this budget <ArrowUpRight size={18} />
-          </Link>
+          {result && p !== null && (
+            <Link className="button light full" to={`/cars?maxPrice=${p}`}>
+              Find cars in this budget <ArrowUpRight size={18} />
+            </Link>
+          )}
           <p>
             This calculation is an estimate, not a finance offer or financial
             advice. It excludes initiation fees, monthly service fees, insurance

@@ -80,6 +80,11 @@ export type ChatMessage = {
   body: string;
   createdAt: string;
 };
+export type ChatThread = {
+  items: ChatMessage[];
+  vehicle: { id: string; title: string };
+  truncated: boolean;
+};
 export type Enquiry = {
   id: string;
   listingId: string;
@@ -233,15 +238,19 @@ export class ApiClient {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${this.base}/api${path}`);
       xhr.timeout = 120000;
-      if (this.token) xhr.setRequestHeader("Authorization", `Bearer ${this.token}`);
+      if (this.token)
+        xhr.setRequestHeader("Authorization", `Bearer ${this.token}`);
       if (this.client) xhr.setRequestHeader("X-Client", this.client);
       xhr.onload = () => {
         try {
           const data = JSON.parse(xhr.responseText);
           if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-          else reject(new ApiError(data.message || "Upload failed.", xhr.status));
+          else
+            reject(new ApiError(data.message || "Upload failed.", xhr.status));
         } catch {
-          reject(new ApiError("The service returned an unreadable response.", 502));
+          reject(
+            new ApiError("The service returned an unreadable response.", 502),
+          );
         }
       };
       xhr.onerror = () =>
@@ -252,7 +261,9 @@ export class ApiClient {
         );
       xhr.ontimeout = () =>
         reject(
-          new ApiError("This is taking longer than expected. Please try again."),
+          new ApiError(
+            "This is taking longer than expected. Please try again.",
+          ),
         );
       xhr.send(body);
     });
@@ -292,3 +303,7 @@ export const canSell = (user: User | null) =>
 export const requiresAdFee = (
   user: { accountType: string; role: string } | null,
 ) => !!user && user.role !== "admin" && user.accountType === "customer";
+export {
+  notificationRoute,
+  type NotificationRoute,
+} from "./notification-route";

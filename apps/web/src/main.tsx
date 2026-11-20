@@ -6,7 +6,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Provider } from "./lib";
-import { Layout } from "./components";
+import { Layout, NotificationChat, InboxPage } from "./components";
 import { Home, Browse, Detail, Finance, Compare, Garage, Legal } from "./pages";
 import { Account, Sell, Workspace } from "./workspace";
 import "./style.css";
@@ -30,6 +30,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/" element={<Home />} />
             <Route path="/cars" element={<Browse />} />
             <Route path="/cars/:id" element={<Detail />} />
+            <Route path="/chat/:leadId" element={<NotificationChat />} />
+            <Route path="/inbox" element={<InboxPage />} />
             <Route path="/finance" element={<Finance />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/garage" element={<Garage />} />

@@ -38,11 +38,13 @@ This preserves an existing complete pair, or saves a VAPID key pair to `.env` wi
 
 Restart the API yourself after environment changes. Sign in on the website/PWA, open Account → Notifications and click Enable notifications. Permission is requested from that user action. Send test queues a real push for this browser. On iOS/iPadOS, web push requires a supported OS and the app installed to the Home Screen.
 
-Notifications cover listing review, enquiries/chat and business updates. The database stores an in-app notification history and a durable delivery queue. Delivery retries are bounded, stale endpoints are removed, and Expo delivery receipts are checked. User logout unregisters the current client. Push is best effort and depends on device/browser/network settings; provider credentials and real-device delivery have not been tested against an owner's account.
+Notifications cover listing review, enquiries/chat and business updates. The database stores an in-app notification history and a durable delivery queue. Delivery retries are bounded, stale endpoints are removed, and Expo delivery receipts are checked. User logout unregisters the current client. Push is best effort and depends on device/browser/network settings; an iOS development-build diagnostic test was delivered through the real Expo/Apple services and confirmed received by the owner on 16 November 2026. Android and browser delivery still need device acceptance testing.
 
 ## Native push
 
 Remote push is implemented through Expo Notifications and the Expo Push Service. It requires **your own signed development/production build**, not Expo Go. The app keeps Expo Go usable and explains this limit instead of requesting unsupported remote-push registration.
+
+The local app is linked to `@ryanthomas3110/autocars` through the public owner/project ID in `config/expo.json`. `EXPO_OWNER` and `EXPO_PROJECT_ID` override these defaults for another white-label deployment. These identifiers are not signing credentials.
 
 Configure your own:
 
@@ -52,6 +54,32 @@ Configure your own:
 - Server-only `EXPO_ACCESS_TOKEN` if enhanced Expo Push Service security is enabled.
 
 Build with the development EAS profile and install it on your phones, then enable notifications in Account. Native permissions are opt-in; notifications are not registered automatically on login. The foreground handler, Android marketplace channel, monochrome notification icon and tap routing are configured. No APNs/FCM merchant/developer credentials have been fabricated or submitted here.
+
+## Notification destinations and home navigation
+
+Notification taps now carry destinations: enquiry/chat alerts open `/chat/:leadId`, listing reviews open the specific `/cars/:listingId`, business updates open the business section, and payment alerts open the listing or payment status. Native apps defer authenticated destinations until session restoration/sign-in, handle taps while running and the last tap on a cold start, and ignore duplicate/malformed destinations. In-app notification history uses the same destinations. Staff-only business review and payment administration open the web workspace because those tools are not native screens. The PWA has an authenticated chat route and preserves the destination through sign-in.
+
+The native header logo returns to Explore, clears search filters and returns the list to the top. These JavaScript changes can be loaded through Metro in existing development builds. Test with a newly generated notification: previously delivered notifications retain their old generic `/account` payload.
+
+## Android Firebase setup
+
+The Android registration error about the Firebase messaging service is consistent with a build missing its Firebase client configuration. The locally resolved AutoCars configuration currently has no `googleServicesFile`. The existing downloaded client file belongs to another package and must not be used for AutoCars.
+
+1. In Firebase Console, create/select the intended Firebase project and add an Android app with package **`za.co.autocars.app`** (or your replacement package in `config/brand.json`).
+2. Download that app's **`google-services.json`** and save it at **`apps/mobile/google-services.json`**. The config detects this local file automatically; it is ignored by Git.
+3. In the AutoCars Expo project's Environment variables, create a **file** variable named **`GOOGLE_SERVICES_JSON`**, uploading that client file for the **development** environment. Also configure it for preview/production when building those profiles. Local ignored files are not automatically included in cloud builds.
+4. Configure the **FCM V1 service account key** for the same Firebase project in Expo → Project settings → Credentials → Android → `za.co.autocars.app` → FCM V1 service account key. This is a different JSON file from the client configuration; never bundle the service-account private key in the mobile app. Alternatively run `npx eas-cli@latest credentials --platform android` from `apps/mobile` and choose the Google Service Account / FCM V1 options.
+5. From `apps/mobile`, rebuild and install the resulting Android app:
+
+   ```sh
+   npx eas-cli@latest build --profile development --platform android --clear-cache
+   ```
+
+6. Open Account → Notifications → Enable push notifications, allow permission, then Send test notification. Reloading Metro alone cannot add native Firebase configuration to an installed APK.
+
+Android cloud builds now fail with an explicit configuration message if the client file is missing or belongs to a different package. iOS does not require this Android file. The native registration screen also explains this setup when Firebase token registration fails.
+
+See [Expo's FCM setup guide](https://docs.expo.dev/push-notifications/fcm-credentials/) for the Firebase client and sender credential setup.
 
 ## R500 private advertisements: real hosted web checkout
 
@@ -94,3 +122,19 @@ npm run mobile -- --clear
 Run `npm run check` for TypeScript, in-process HTTP/WebSocket tests, payment and push tests, web/PWA build, service-worker verification, SDK compatibility, both native bundle exports and audit. Test transports/providers are injected only in the test suite; no production endpoint declares a payment successful from a supplied card number.
 
 Primary references: [Expo push setup](https://docs.expo.dev/push-notifications/push-notifications-setup/), [Chrome installation criteria](https://developer.chrome.com/blog/update-install-criteria), [Payfast documentation](https://developers.payfast.co.za/docs), [Apple payment guidelines](https://developer.apple.com/app-store/review/guidelines/#payments).
+
+## Chat and browser follow-up — 17 November 2026
+
+Chats open at the latest loaded message and follow new messages while near the bottom. Reading older messages preserves the scroll position; sending or focusing the composer returns to the latest message. Native chat uses a full-screen keyboard-avoiding layout with a tappable Send button while the keyboard is visible. Browser chat sizes to the visual viewport. The API returns the latest 500 messages rather than the first 500.
+
+The web header and mobile PWA navigation now show an Inbox icon with a live unread count. The Inbox combines buyer/seller conversations; staff can see the conversations they are authorised to administer. Opening a chat records its latest incoming message/enquiry as read and updates the badge. Staff who have posted in a conversation also receive reply notifications.
+
+Browser Enable requests notification permission directly from the user action, before networking (required for Safari's user-gesture handling), and reports a worker readiness timeout instead of waiting indefinitely. Already opted-in subscriptions can reconnect when the Account panel opens without prompting again. Re-registering the same device/account preserves pending delivery jobs. Changing the device's account still discards the old account's jobs.
+
+The local API reports web push enabled, but the inspected database has no browser subscriptions. A browser must still opt in through Account → Notifications → Enable, and then Send test. On desktop use localhost or HTTPS; on iPhone use an HTTPS installed Home Screen PWA. Native registrations do not register a browser. Real browser delivery remains unconfirmed until a browser is registered and the owner receives its test.
+
+## Enquiry opening message and vehicle subject
+
+The original enquiry is now the first message for both existing and new conversations, using its original sender and timestamp. It is derived from the enquiry record once per response rather than inserted again on each view. Only the receiving seller gets the enquiry-submission push; the sender and unrelated staff do not. Reply notifications still reach the other conversation participants, including staff who joined the chat.
+
+The chat subject is the vehicle year/make/model/variant and is a link to that listing on native and web. iOS waits for the chat modal to dismiss before presenting the listing. An unavailable vehicle shows an error without losing the conversation. Long threads retain the original enquiry plus the latest 500 replies, with an explicit truncated-history notice.

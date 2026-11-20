@@ -1,37 +1,74 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-test("standalone build config rejects missing or local API URLs before release", async () => {
-  const previous = {
-    profile: process.env.EAS_BUILD_PROFILE,
-    api: process.env.EXPO_PUBLIC_API_URL,
-  };
-  const configUrl = new URL("../../mobile/app.config.ts", import.meta.url).href;
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import appConfigExport from "../../mobile/app.config";
+// Expo's config loader and tsx may wrap this native-workspace CommonJS export.
+const appConfig =
+  typeof appConfigExport === "function"
+    ? appConfigExport
+    : (
+        appConfigExport as {
+          default: (context: { projectRoot: string }) => any;
+        }
+      ).default;
+
+test("standalone builds validate API URLs and Android Firebase configuration", () => {
+  const names = [
+    "EAS_BUILD_PROFILE",
+    "EXPO_PUBLIC_API_URL",
+    "EAS_BUILD",
+    "EAS_BUILD_PLATFORM",
+    "GOOGLE_SERVICES_JSON",
+  ];
+  const previous = Object.fromEntries(
+    names.map((name) => [name, process.env[name]]),
+  );
+  const projectRoot = mkdtempSync(join(tmpdir(), "autocars-native-config-"));
+  const config = () => appConfig({ projectRoot });
   try {
+    delete process.env.EAS_BUILD;
+    delete process.env.GOOGLE_SERVICES_JSON;
     process.env.EAS_BUILD_PROFILE = "production";
     delete process.env.EXPO_PUBLIC_API_URL;
-    await assert.rejects(
-      import(`${configUrl}?test=missing-api`),
-      /Set EXPO_PUBLIC_API_URL/,
-    );
+    assert.throws(config, /Set EXPO_PUBLIC_API_URL/);
     process.env.EXPO_PUBLIC_API_URL = "http://localhost:4000";
-    await assert.rejects(
-      import(`${configUrl}?test=local-api`),
-      /real HTTPS API/,
-    );
+    assert.throws(config, /real HTTPS API/);
     process.env.EXPO_PUBLIC_API_URL = "https://api.example.invalid";
-    await assert.rejects(
-      import(`${configUrl}?test=placeholder-api`),
-      /real HTTPS API/,
-    );
+    assert.throws(config, /real HTTPS API/);
     process.env.EXPO_PUBLIC_API_URL = "https://api.autocars.co.za";
-    const config = (await import(`${configUrl}?test=config-only-no-network`))
-      .default;
-    assert.equal(config.expo.extra.apiUrl, "https://api.autocars.co.za");
-    assert.ok(config.expo.plugins.includes("expo-dev-client"));
+    assert.equal(config().expo.extra.apiUrl, "https://api.autocars.co.za");
+    assert.ok(config().expo.plugins.includes("expo-dev-client"));
+    process.env.EAS_BUILD = "true";
+    process.env.EAS_BUILD_PLATFORM = "android";
+    assert.throws(config, /Android push requires/);
+    const googleFile = join(projectRoot, "google-services.json");
+    const client = (packageName: string) =>
+      JSON.stringify({
+        client: [
+          {
+            client_info: { android_client_info: { package_name: packageName } },
+          },
+        ],
+      });
+    writeFileSync(googleFile, client("com.unrelated.app"));
+    assert.throws(config, /does not include the Android package/);
+    writeFileSync(googleFile, client("za.co.autocars.app"));
+    assert.equal(config().expo.android.googleServicesFile, googleFile);
+    const fileVariable = join(projectRoot, "eas-file.json");
+    writeFileSync(fileVariable, client("za.co.autocars.app"));
+    process.env.GOOGLE_SERVICES_JSON = fileVariable;
+    assert.equal(config().expo.android.googleServicesFile, fileVariable);
+    delete process.env.GOOGLE_SERVICES_JSON;
+    rmSync(googleFile);
+    process.env.EAS_BUILD_PLATFORM = "ios";
+    assert.doesNotThrow(config, "iOS must not require Firebase configuration");
   } finally {
-    if (previous.profile === undefined) delete process.env.EAS_BUILD_PROFILE;
-    else process.env.EAS_BUILD_PROFILE = previous.profile;
-    if (previous.api === undefined) delete process.env.EXPO_PUBLIC_API_URL;
-    else process.env.EXPO_PUBLIC_API_URL = previous.api;
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+    rmSync(projectRoot, { recursive: true, force: true });
   }
 });

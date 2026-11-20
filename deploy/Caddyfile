@@ -1,0 +1,4 @@
+{$AUTOCARS_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy autocars:4000
+}

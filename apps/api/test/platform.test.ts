@@ -373,8 +373,10 @@ test("complete marketplace lifecycle, authorisation, uploads, moderation, enquir
         buyer.token,
       )
     ).json().items;
-    assert.equal(thread.length, 2);
-    assert.equal(thread[1].senderName, "Seller");
+    assert.equal(thread.length, 3);
+    assert.equal(thread[0].body, "Can I view the car this weekend?");
+    assert.equal(thread[0].senderId, buyer.user.id);
+    assert.equal(thread[2].senderName, "Seller");
     // Buyer-side enquiry list + push token registration
     assert.equal(
       (await request("GET", "/api/me/enquiries", undefined, buyer.token)).json()

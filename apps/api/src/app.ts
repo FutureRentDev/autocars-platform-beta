@@ -206,7 +206,8 @@ export async function buildApp(
       userIds.filter((id): id is string => !!id),
       title,
       body,
-      data.path || "/account",
+      data.path ||
+        (data.leadId ? `/chat/${encodeURIComponent(data.leadId)}` : "/account"),
     );
   };
   const adminIds = () =>
@@ -421,6 +422,7 @@ export async function buildApp(
         route.startsWith("/api/admin/") ||
         route.includes("/listings") ||
         route.startsWith("/api/me/business") ||
+        route === "/api/leads/:id/messages" ||
         route === "/api/me" ||
         route === "/api/auth/register" ||
         route === "/api/auth/verify",
@@ -459,7 +461,9 @@ export async function buildApp(
         admins(),
         "Listing awaiting review",
         "A vehicle has been submitted for AutoCars review.",
-        "/workspace",
+        params?.id || (req as any).createdListingId
+          ? `/cars/${encodeURIComponent(params?.id || (req as any).createdListingId)}`
+          : "/workspace?tab=inventory",
       );
     if (route === "/api/admin/listings/:id" && listing)
       notifications.notify(
@@ -468,14 +472,14 @@ export async function buildApp(
         body?.status === "published"
           ? "Your vehicle listing is now published."
           : "There is an update to your vehicle listing.",
-        "/workspace",
+        `/cars/${encodeURIComponent(params.id)}`,
       );
     if ((req as any).createdBusiness)
       notifications.notify(
         admins(),
         "New business application",
         "A dealership or professional seller has requested a business account.",
-        "/workspace",
+        "/workspace?tab=businesses",
       );
     live.publish(change);
   });
@@ -1059,13 +1063,13 @@ export async function buildApp(
       [order.user_id],
       "Payment received",
       error || "Your advertisement payment has been verified.",
-      "/workspace",
+      listingId ? `/cars/${listingId}` : `/payment?id=${order.id}`,
     );
     notifications.notify(
       adminIds(),
       "Advertisement payment verified",
       error || "A paid vehicle advertisement is ready for review.",
-      "/workspace",
+      "/workspace?tab=payments",
     );
     live.publish({ public: true, users: [order.user_id], admin: true });
     return reply.type("text/plain").send("OK");
@@ -1094,6 +1098,7 @@ export async function buildApp(
       now(),
     );
     audit(u.id, "listing.created", id);
+    (req as any).createdListingId = id;
     reply.code(201);
     return {
       listing: mapListing(read("SELECT * FROM listings WHERE id=?", id)!),
@@ -1258,7 +1263,7 @@ export async function buildApp(
       const seller = read("SELECT email FROM users WHERE id=?", l.owner_id)!;
       const car = `${JSON.parse(l.data).year} ${JSON.parse(l.data).make} ${JSON.parse(l.data).model}`;
       sendPush(
-        [l.owner_id, ...adminIds()],
+        [l.owner_id],
         "New vehicle enquiry",
         `${b.name} is interested in your ${car}.`,
         { leadId: id, type: "enquiry" },
@@ -1325,11 +1330,15 @@ export async function buildApp(
   });
   app.get("/api/leads/:id/messages", async (req) => {
     const { u, lead } = leadAccess(req);
-    const last = read(
+    const lastMessage = read(
       "SELECT MAX(created_at) AS latest FROM messages WHERE lead_id=? AND sender_id<>?",
       lead.id,
       u.id,
     )?.latest;
+    const last = [lastMessage, lead.buyer_id !== u.id ? lead.created_at : null]
+      .filter(Boolean)
+      .sort()
+      .at(-1);
     const previous = read(
       "SELECT read_at FROM lead_reads WHERE lead_id=? AND user_id=?",
       lead.id,
@@ -1340,15 +1349,36 @@ export async function buildApp(
         "INSERT OR REPLACE INTO lead_reads VALUES(?,?,?)",
         lead.id,
         u.id,
-        now(),
+        last,
       );
       live.publish({ users: [u.id] });
     }
+    const replies = all(
+      "SELECT * FROM (SELECT m.*,m.rowid AS message_position,u.name AS sender_name FROM messages m JOIN users u ON m.sender_id=u.id WHERE m.lead_id=? ORDER BY m.created_at DESC,m.rowid DESC LIMIT 500) ORDER BY created_at ASC,message_position ASC",
+      lead.id,
+    ).map(mapMessage);
+    const vehicle = JSON.parse(lead.listing_data);
     return {
-      items: all(
-        "SELECT m.*,u.name AS sender_name FROM messages m JOIN users u ON m.sender_id=u.id WHERE m.lead_id=? ORDER BY m.created_at ASC LIMIT 500",
-        lead.id,
-      ).map(mapMessage),
+      vehicle: {
+        id: lead.listing_id,
+        title: [vehicle.year, vehicle.make, vehicle.model, vehicle.variant]
+          .filter(Boolean)
+          .join(" "),
+      },
+      truncated:
+        (read("SELECT COUNT(*) AS n FROM messages WHERE lead_id=?", lead.id)
+          ?.n || 0) > 500,
+      items: [
+        {
+          id: `${lead.id}:enquiry`,
+          leadId: lead.id,
+          senderId: lead.buyer_id || "",
+          senderName: lead.name,
+          body: lead.message,
+          createdAt: lead.created_at,
+        },
+        ...replies,
+      ],
     };
   });
   app.post("/api/leads/:id/messages", async (req) => {
@@ -1365,11 +1395,21 @@ export async function buildApp(
       b.body,
       now(),
     );
-    const recipient = lead.buyer_id === u.id ? lead.owner_id : lead.buyer_id;
+    // Staff may participate without being either party to the enquiry.
+    // Notify both participants in that case, excluding the sender.
+    const staffParticipants = all(
+      "SELECT DISTINCT m.sender_id FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.lead_id=? AND u.role='admin'",
+      lead.id,
+    ).map((row) => row.sender_id);
+    const recipients = [
+      lead.owner_id,
+      lead.buyer_id,
+      ...staffParticipants,
+    ].filter((id): id is string => !!id && id !== u.id);
     const l = JSON.parse(lead.listing_data);
     const car = `${l.year} ${l.make} ${l.model}`;
     sendPush(
-      [recipient],
+      recipients,
       `${u.name} sent a message`,
       `About the ${car}: ${b.body.slice(0, 80)}`,
       { leadId: lead.id, type: "message" },
@@ -1382,6 +1422,38 @@ export async function buildApp(
         )!,
       ),
     };
+  });
+  app.get("/api/me/inbox", async (req) => {
+    const u = requireUser(req);
+    const rows = all(
+      `SELECT e.id,e.listing_id,l.data,
+      COALESCE((SELECT created_at FROM messages WHERE lead_id=e.id ORDER BY created_at DESC,rowid DESC LIMIT 1),e.created_at) AS updated_at,
+      COALESCE((SELECT body FROM messages WHERE lead_id=e.id ORDER BY created_at DESC,rowid DESC LIMIT 1),e.message) AS preview,
+      (SELECT COUNT(*) FROM messages m WHERE m.lead_id=e.id AND m.sender_id<>? AND m.created_at>COALESCE((SELECT read_at FROM lead_reads WHERE lead_id=e.id AND user_id=?),''))
+      + CASE WHEN e.buyer_id IS NOT ? AND e.created_at>COALESCE((SELECT read_at FROM lead_reads WHERE lead_id=e.id AND user_id=?),'') THEN 1 ELSE 0 END AS unread
+      FROM leads e JOIN listings l ON l.id=e.listing_id
+      WHERE ?='admin' OR l.owner_id=? OR e.buyer_id=?
+      ORDER BY updated_at DESC LIMIT 1000`,
+      u.id,
+      u.id,
+      u.id,
+      u.id,
+      u.role,
+      u.id,
+      u.id,
+    );
+    const items = rows.map((row) => {
+      const vehicle = JSON.parse(row.data);
+      return {
+        id: row.id,
+        listingId: row.listing_id,
+        title: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+        preview: row.preview,
+        unread: Number(row.unread),
+        updatedAt: row.updated_at,
+      };
+    });
+    return { items, unread: items.reduce((sum, item) => sum + item.unread, 0) };
   });
   app.get("/api/me/leads", async (req) => {
     const me = requireUser(req);
@@ -1601,7 +1673,8 @@ export async function buildApp(
     );
     const id = existing?.id || randomUUID();
     if (existing) {
-      run("DELETE FROM push_jobs WHERE subscription_id=?", id);
+      if (existing.user_id !== u.id)
+        run("DELETE FROM push_jobs WHERE subscription_id=?", id);
       run(
         "UPDATE notification_subscriptions SET user_id=?,platform=?,data=? WHERE id=?",
         u.id,
@@ -1646,6 +1719,16 @@ export async function buildApp(
     { config: { rateLimit: { max: 3, timeWindow: "15 minutes" } } },
     async (req) => {
       const u = requireUser(req);
+      if (
+        !read(
+          "SELECT id FROM notification_subscriptions WHERE user_id=? LIMIT 1",
+          u.id,
+        )
+      )
+        fail(
+          409,
+          "Enable push notifications on this device first. No devices are registered for your account.",
+        );
       notifications.notify(
         [u.id],
         "Notifications are connected",
@@ -1718,7 +1801,7 @@ export async function buildApp(
       adminIds(),
       "New business application",
       `${u.name} applied to list vehicles as a business.`,
-      { type: "business" },
+      { type: "business", path: "/workspace?tab=businesses" },
     ).catch(() => {});
     return {
       application: businessApplication(
@@ -1778,7 +1861,7 @@ export async function buildApp(
         [r.user_id],
         `Business account ${b.status}`,
         `Your AutoCars business application is now ${b.status}.`,
-        { type: "business" },
+        { type: "business", path: "/workspace?tab=business" },
       ).catch(() => {});
       db.exec("COMMIT");
     } catch (e) {

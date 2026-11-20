@@ -15,6 +15,16 @@ import {
   type Listing,
 } from "@autocars/core";
 export const api = new ApiClient(import.meta.env.VITE_API_URL || "");
+export type InboxSummary = {
+  items: {
+    id: string;
+    title: string;
+    preview: string;
+    unread: number;
+    updatedAt: string;
+  }[];
+  unread: number;
+};
 const Context = createContext<any>(null);
 const accountTopics = [
   "account",
@@ -26,6 +36,17 @@ const accountTopics = [
 ];
 export function Provider({ children }: { children: ReactNode }) {
   const [liveStatus, setLiveStatus] = useState<LiveStatus>("connecting");
+  const [inbox, setInbox] = useState<{
+    items: {
+      id: string;
+      title: string;
+      preview: string;
+      unread: number;
+      updatedAt: string;
+    }[];
+    unread: number;
+  }>({ items: [], unread: 0 });
+  const refreshVersion = useRef(0);
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
     [toast, setToast] = useState(""),
@@ -41,14 +62,23 @@ export function Provider({ children }: { children: ReactNode }) {
     setToast(s);
   }
   async function refresh() {
+    const version = ++refreshVersion.current;
     try {
       const r = await api.get("/auth/me");
+      const [favourites, messages] = await Promise.all([
+        api.get("/me/favourites"),
+        api.get("/me/inbox"),
+      ]);
+      if (version !== refreshVersion.current) return;
       setUser(r.user);
-      setSaved((await api.get("/me/favourites")).items);
+      setSaved(favourites.items);
+      setInbox(messages);
     } catch (e) {
+      if (version !== refreshVersion.current) return;
       if (e instanceof ApiError && e.status === 401) {
         setUser(null);
         setSaved([]);
+        setInbox({ items: [], unread: 0 });
       } else notify((e as Error).message);
     } finally {
       setLoading(false);
@@ -147,6 +177,7 @@ export function Provider({ children }: { children: ReactNode }) {
     <Context.Provider
       value={{
         user,
+        inbox,
         liveStatus,
         loading,
         refresh,
@@ -176,6 +207,7 @@ export function Provider({ children }: { children: ReactNode }) {
 export function useApp() {
   return useContext(Context) as {
     user: User | null;
+    inbox: InboxSummary;
     liveStatus: LiveStatus;
     loading: boolean;
     refresh: () => Promise<void>;

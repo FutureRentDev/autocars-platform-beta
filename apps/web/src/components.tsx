@@ -1,6 +1,12 @@
 import { InstallAppButton } from "./pwa";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  useNavigate,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -17,6 +23,7 @@ import {
   Plus,
   CarFront,
   Send,
+  MessageCircle,
 } from "lucide-react";
 import {
   brand,
@@ -28,6 +35,7 @@ import {
   provinces,
   fuels,
   type ChatMessage,
+  type ChatThread,
 } from "@autocars/core";
 import { api, useApp, useLoad } from "./lib";
 export function Logo() {
@@ -38,7 +46,7 @@ export function Logo() {
   );
 }
 export function Layout({ children }: { children: ReactNode }) {
-  const { user, compare, saved, liveStatus } = useApp(),
+  const { user, compare, saved, liveStatus, inbox } = useApp(),
     [open, setOpen] = useState(false);
   return (
     <>
@@ -76,6 +84,21 @@ export function Layout({ children }: { children: ReactNode }) {
               <UserRound size={17} />
               <span>{user ? user.name.split(" ")[0] : "Sign in"}</span>
             </Link>
+            {user && (
+              <Link
+                to="/inbox"
+                className="icon-link"
+                aria-label={`Messages, ${inbox.unread} unread`}
+                title="Messages"
+              >
+                <MessageCircle size={20} />
+                {inbox.unread > 0 && (
+                  <sup aria-live="polite">
+                    {inbox.unread > 99 ? "99+" : inbox.unread}
+                  </sup>
+                )}
+              </Link>
+            )}
             <Link to="/sell" className="button small dark desktop">
               Sell my car <Plus size={15} />
             </Link>
@@ -138,6 +161,23 @@ export function Layout({ children }: { children: ReactNode }) {
           <UserRound size={20} />
           Account
         </NavLink>
+        {user && (
+          <NavLink
+            to="/inbox"
+            className="inbox-nav"
+            aria-label={`Messages, ${inbox.unread} unread`}
+          >
+            <span className="inbox-icon">
+              <MessageCircle size={20} />
+              {inbox.unread > 0 && (
+                <b className="unread-badge">
+                  {inbox.unread > 99 ? "99+" : inbox.unread}
+                </b>
+              )}
+            </span>
+            Inbox
+          </NavLink>
+        )}
       </nav>
       {compare.length > 0 && (
         <Link className="compare-float" to="/compare">
@@ -436,6 +476,7 @@ export function SearchPanel({
 }
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useApp();
+  const location = useLocation();
   return loading ? (
     <Loading />
   ) : user ? (
@@ -445,7 +486,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       <Empty
         title="A little closer to your next car"
         action={
-          <Link className="button dark" to="/account">
+          <Link
+            className="button dark"
+            to={`/account?next=${encodeURIComponent(location.pathname + location.search)}`}
+          >
             Sign in or create an account <ArrowRight size={17} />
           </Link>
         }
@@ -510,20 +554,35 @@ export function ChatModal({
 }) {
   const { user, notify, subscribeLive } = useApp();
   const [items, setItems] = useState<ChatMessage[]>([]);
+  const [vehicle, setVehicle] = useState<ChatThread["vehicle"] | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const followLatest = useRef(true);
+  const [viewport, setViewport] = useState(() => ({
+    height: window.visualViewport?.height ?? window.innerHeight,
+    top: window.visualViewport?.offsetTop ?? 0,
+  }));
+  function scrollToLatest() {
+    const list = messagesRef.current;
+    if (list && followLatest.current) list.scrollTop = list.scrollHeight;
+  }
   async function load() {
     try {
-      const r = await api.get<{ items: ChatMessage[] }>(
-        `/leads/${leadId}/messages`,
-      );
+      const r = await api.get<ChatThread>(`/leads/${leadId}/messages`);
       setItems(r.items);
+      setVehicle(r.vehicle);
+      setTruncated(r.truncated);
     } catch (e) {
       notify((e as Error).message);
     }
   }
   useEffect(() => {
+    followLatest.current = true;
+    setItems([]);
+    setVehicle(null);
+    setDraft("");
     load();
     const off = subscribeLive((t) => {
       if (t.includes("enquiries") || t.includes("account")) load();
@@ -535,15 +594,35 @@ export function ChatModal({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId]);
+  useEffect(scrollToLatest, [items.at(-1)?.id]);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [items.length]);
+    const visual = window.visualViewport;
+    const resize = () => {
+      setViewport({
+        height: visual?.height ?? window.innerHeight,
+        top: visual?.offsetTop ?? 0,
+      });
+      requestAnimationFrame(scrollToLatest);
+    };
+    visual?.addEventListener("resize", resize);
+    visual?.addEventListener("scroll", resize);
+    window.addEventListener("resize", resize);
+    const observer = new ResizeObserver(scrollToLatest);
+    if (messagesRef.current) observer.observe(messagesRef.current);
+    return () => {
+      visual?.removeEventListener("resize", resize);
+      visual?.removeEventListener("scroll", resize);
+      window.removeEventListener("resize", resize);
+      observer.disconnect();
+    };
+  }, []);
   async function send() {
     const body = draft.trim();
     if (!body || busy) return;
     setBusy(true);
     try {
       await api.post(`/leads/${leadId}/messages`, { body });
+      followLatest.current = true;
       setDraft("");
       load();
     } catch (e) {
@@ -553,7 +632,11 @@ export function ChatModal({
     }
   }
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className="modal-backdrop chat-backdrop"
+      style={{ top: viewport.top, height: viewport.height, bottom: "auto" }}
+      onClick={onClose}
+    >
       <div
         className="modal chat-modal"
         role="dialog"
@@ -562,7 +645,20 @@ export function ChatModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-heading">
-          <h2>{title}</h2>
+          <h2>
+            {vehicle ? (
+              <Link
+                to={`/cars/${vehicle.id}`}
+                className="chat-vehicle"
+                aria-label={`View listing: ${vehicle.title}`}
+              >
+                {vehicle.title}
+                <small>View vehicle ↗</small>
+              </Link>
+            ) : (
+              title
+            )}
+          </h2>
           <button
             className="icon-button"
             aria-label="Close chat"
@@ -571,7 +667,20 @@ export function ChatModal({
             <X size={20} />
           </button>
         </div>
-        <div className="chat-messages">
+        <div
+          className="chat-messages"
+          ref={messagesRef}
+          onScroll={(event) => {
+            const list = event.currentTarget;
+            followLatest.current =
+              list.scrollHeight - list.clientHeight - list.scrollTop < 80;
+          }}
+        >
+          {truncated && (
+            <p className="fine-print">
+              Original enquiry and the latest 500 replies.
+            </p>
+          )}
           {!items.length && (
             <p className="muted chat-empty">
               No messages yet — say hello to get the conversation started.
@@ -594,7 +703,6 @@ export function ChatModal({
               </time>
             </div>
           ))}
-          <div ref={endRef} />
         </div>
         <form
           className="chat-input"
@@ -609,6 +717,10 @@ export function ChatModal({
             placeholder="Write a message…"
             maxLength={2000}
             aria-label="Message"
+            onFocus={() => {
+              followLatest.current = true;
+              requestAnimationFrame(scrollToLatest);
+            }}
           />
           <button
             className="button dark small"
@@ -621,5 +733,72 @@ export function ChatModal({
         </form>
       </div>
     </div>
+  );
+}
+
+export function NotificationChat() {
+  const { leadId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <RequireAuth>
+      <div className="wrap page">
+        <h1>Your conversation.</h1>
+        {leadId && (
+          <ChatModal
+            key={leadId}
+            leadId={leadId}
+            title="Conversation"
+            onClose={() => navigate("/inbox")}
+          />
+        )}
+      </div>
+    </RequireAuth>
+  );
+}
+
+export function InboxPage() {
+  const { inbox } = useApp();
+  return (
+    <RequireAuth>
+      <div className="wrap page">
+        <Eyebrow>KEEP THE CONVERSATION MOVING</Eyebrow>
+        <h1>Your messages.</h1>
+        {inbox.items.length ? (
+          <div className="lead-list">
+            {inbox.items.map(
+              (thread: {
+                id: string;
+                title: string;
+                preview: string;
+                unread: number;
+                updatedAt: string;
+              }) => (
+                <Link
+                  className="inbox-thread"
+                  key={thread.id}
+                  to={`/chat/${thread.id}`}
+                >
+                  <div>
+                    <b>{thread.title}</b>
+                    <p>{thread.preview}</p>
+                    <small>
+                      {new Date(thread.updatedAt).toLocaleString("en-ZA")}
+                    </small>
+                  </div>
+                  {thread.unread > 0 && (
+                    <span className="thread-count">{thread.unread} unread</span>
+                  )}
+                  <ArrowRight size={18} />
+                </Link>
+              ),
+            )}
+          </div>
+        ) : (
+          <Empty title="Your conversations start here.">
+            Enquiries and messages will appear here.
+          </Empty>
+        )}
+      </div>
+    </RequireAuth>
   );
 }

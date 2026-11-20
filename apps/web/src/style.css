@@ -2640,10 +2640,20 @@ tr:last-child td {
   color: #f2f2f0;
 }
 .chat-modal {
+  width: 100%;
   max-width: 520px;
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
+  height: min(640px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.chat-backdrop {
+  padding: 20px;
+}
+.chat-modal .modal-heading {
+  flex-shrink: 0;
 }
 .modal-heading {
   display: flex;
@@ -2662,8 +2672,11 @@ tr:last-child td {
   flex-direction: column;
   gap: 10px;
   padding: 14px 2px;
-  min-height: 220px;
-  max-height: 50vh;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.chat-messages > :first-child {
+  margin-top: auto;
 }
 .chat-empty {
   text-align: center;
@@ -2709,12 +2722,15 @@ tr:last-child td {
   color: #8d8d88;
 }
 .chat-input {
+  flex-shrink: 0;
   display: flex;
   gap: 8px;
   margin-top: 10px;
 }
 .chat-input input {
   flex: 1;
+  min-width: 0;
+  font-size: 16px;
 }
 .live-state {
   font-size: 9px;
@@ -2773,4 +2789,63 @@ tr:last-child td {
 .notification-item small {
   font-size: 9px;
   color: #999;
+}
+
+.inbox-icon {
+  position: relative;
+  display: inline-flex;
+}
+.unread-badge {
+  position: absolute;
+  top: -7px;
+  right: -12px;
+  padding: 2px 5px;
+  min-width: 17px;
+  border-radius: 12px;
+  background: #f2f2ee;
+  color: #111;
+  font-size: 9px;
+  line-height: 13px;
+  text-align: center;
+}
+.inbox-thread {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: #141414;
+}
+.inbox-thread > div {
+  flex: 1;
+  min-width: 0;
+}
+.inbox-thread p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #aaa;
+  margin: 8px 0;
+}
+.inbox-thread small {
+  color: #aaa;
+}
+.thread-count {
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: #f2f2ee;
+  color: #111;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+.chat-vehicle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.chat-vehicle small {
+  font-size: 11px;
+  font-weight: 400;
+  text-decoration: underline;
 }

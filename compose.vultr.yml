@@ -1,0 +1,35 @@
+name: autocars
+services:
+  autocars:
+    build: .
+    restart: unless-stopped
+    env_file: .env.vultr
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      HOST: 0.0.0.0
+      DATA_DIR: /data
+      TRUST_PROXY: "true"
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - autocars-data:/data
+  https:
+    image: caddy:2-alpine
+    profiles: [https]
+    restart: unless-stopped
+    depends_on:
+      - autocars
+    environment:
+      AUTOCARS_DOMAIN: ${AUTOCARS_DOMAIN:-beta-api.autocars.co.za}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+volumes:
+  autocars-data:
+  caddy-data:
+  caddy-config:

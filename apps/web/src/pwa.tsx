@@ -1,3 +1,4 @@
+import { enableWebPush, reconnectWebPush } from "./web-push";
 import { useEffect, useState } from "react";
 import { registerSW } from "virtual:pwa-register";
 import { brand } from "@autocars/core";
@@ -127,15 +128,37 @@ export async function disableWebPush() {
   localStorage.removeItem(pushKey);
 }
 export function NotificationsPanel() {
-  const { notify } = useApp(),
+  const { notify, user } = useApp(),
     [busy, setBusy] = useState(false),
     [enabled, setEnabled] = useState(!!localStorage.getItem(pushKey));
   const { data, reload } = useLoad<{ items: any[] }>("/me/notifications", {
     items: [],
   });
+  useEffect(() => {
+    let active = true;
+    if (user)
+      void reconnectWebPush(api)
+        .then((id) => {
+          if (!active) return;
+          if (id) localStorage.setItem(pushKey, id);
+          else localStorage.removeItem(pushKey);
+          setEnabled(!!id);
+        })
+        .catch(() => {
+          if (active) setEnabled(false);
+        });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
   return (
     <div className="panel">
       <h3>Notifications</h3>
+      <p className="fine-print" role="status">
+        {enabled
+          ? "This browser is registered for push notifications."
+          : "This browser is not registered. Use Enable notifications below."}
+      </p>
       <p>
         Get listing reviews, buyer enquiries and business application updates,
         even when the app is closed.
@@ -147,54 +170,7 @@ export function NotificationsPanel() {
           onClick={async () => {
             setBusy(true);
             try {
-              if (
-                !window.isSecureContext ||
-                !("serviceWorker" in navigator) ||
-                !("PushManager" in window) ||
-                !("Notification" in window)
-              )
-                throw new Error(
-                  "Use a supported browser over HTTPS. On iOS, install the app to your Home Screen first.",
-                );
-              const config = await api.get("/push/config");
-              if (!config.webEnabled)
-                throw new Error(
-                  "Web notifications have not been configured by the operator.",
-                );
-              if ((await Notification.requestPermission()) !== "granted")
-                throw new Error(
-                  "Notifications are blocked. You can allow them in your browser’s site settings.",
-                );
-              const registration = await navigator.serviceWorker.ready;
-              let subscription =
-                await registration.pushManager.getSubscription();
-              const encoded = config.publicKey
-                .replace(/-/g, "+")
-                .replace(/_/g, "/");
-              const raw = atob(
-                encoded + "=".repeat((4 - (encoded.length % 4)) % 4),
-              );
-              const key = new Uint8Array([...raw].map((c) => c.charCodeAt(0)));
-              const existingKey = subscription?.options.applicationServerKey;
-              if (subscription && existingKey) {
-                const current = new Uint8Array(existingKey);
-                if (
-                  current.length !== key.length ||
-                  current.some((value, index) => value !== key[index])
-                ) {
-                  await subscription.unsubscribe();
-                  subscription = null;
-                }
-              }
-              if (!subscription)
-                subscription = await registration.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey: key,
-                });
-              const r = await api.post("/me/push", {
-                platform: "web",
-                subscription: subscription.toJSON(),
-              });
+              const r = await enableWebPush(api);
               localStorage.setItem(pushKey, r.id);
               setEnabled(true);
               notify("Notifications enabled on this browser.");

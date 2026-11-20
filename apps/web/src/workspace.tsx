@@ -513,13 +513,17 @@ export function Account() {
     </div>
   );
 }
+const numericText = (value: string) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
 const blank = {
   make: "",
   model: "",
   variant: "",
-  year: new Date().getFullYear(),
-  price: 0,
-  mileage: 0,
+  year: String(new Date().getFullYear()),
+  price: "",
+  mileage: "",
   bodyType: "SUV",
   fuel: "Petrol",
   transmission: "Automatic",
@@ -558,13 +562,38 @@ function SellContent() {
         .then((r) => {
           if (r.listing.ownerId !== user?.id)
             throw new Error("You can only edit your own listings.");
-          setForm(r.listing);
+          setForm({
+            ...r.listing,
+            year: String(r.listing.year),
+            price: String(r.listing.price),
+            mileage: String(r.listing.mileage),
+          });
         })
         .catch((e) => setError(e.message))
         .finally(() => setFetching(false));
   }, [id]);
   function field(key: string, value: any) {
     setForm((p) => ({ ...p, [key]: value }));
+  }
+  function listingPayload() {
+    const year = Number(form.year),
+      price = Number(form.price),
+      mileage = Number(form.mileage);
+    if (
+      ![form.year, form.price, form.mileage].every((v) => v.trim() !== "") ||
+      ![year, price, mileage].every(Number.isFinite)
+    )
+      throw new Error("Enter a valid year, asking price, and mileage.");
+    if (
+      year < 1900 ||
+      year > new Date().getFullYear() + 1 ||
+      price < 1000 ||
+      price > 100000000 ||
+      mileage < 0 ||
+      mileage > 3000000
+    )
+      throw new Error("Check the year, asking price, and mileage values.");
+    return { ...form, year, price, mileage };
   }
   async function upload(files: FileList | null) {
     if (!files) return;
@@ -592,11 +621,12 @@ function SellContent() {
     setBusy(true);
     setError("");
     try {
-      if (!form.images.length) throw new Error("Add at least one photo.");
-      if (id) await api.patch(`/listings/${id}`, form);
+      const payload = listingPayload();
+      if (!payload.images.length) throw new Error("Add at least one photo.");
+      if (id) await api.patch(`/listings/${id}`, payload);
       else
         await api.post("/listings", {
-          ...form,
+          ...payload,
           paymentRef: payRef || undefined,
         });
       notify(
@@ -613,7 +643,7 @@ function SellContent() {
     setBusy(true);
     setError("");
     try {
-      await startHostedCheckout({ listing: form });
+      await startHostedCheckout({ listing: listingPayload() });
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -621,6 +651,14 @@ function SellContent() {
   }
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (step === 0) {
+      try {
+        listingPayload();
+      } catch (err) {
+        setError((err as Error).message);
+        return;
+      }
+    }
     if (step < lastStep) {
       setStep(step + 1);
       return;
@@ -731,7 +769,7 @@ function SellContent() {
                     min={x.min}
                     max={x.max}
                     value={(form as any)[x.key]}
-                    onChange={(e) => field(x.key, Number(e.target.value))}
+                    onChange={(e) => field(x.key, e.target.value)}
                   />
                 </label>
               ))}
@@ -842,7 +880,8 @@ function SellContent() {
                   {form.year} {form.make} {form.model}
                 </h3>
                 <p>
-                  {money(form.price)} · {brand.adDays}-day advertisement
+                  {money(numericText(form.price))} · {brand.adDays}-day
+                  advertisement
                 </p>
               </div>
             </div>
@@ -906,7 +945,8 @@ function SellContent() {
                   {form.year} {form.make} {form.model}
                 </h3>
                 <p>
-                  {money(form.price)} · {form.mileage.toLocaleString()} km ·{" "}
+                  {money(numericText(form.price))} ·{" "}
+                  {numericText(form.mileage).toLocaleString()} km ·{" "}
                   {form.images.length} photos
                 </p>
               </div>
@@ -969,6 +1009,7 @@ const adExpired = (l: Listing) =>
   !!l.paidUntil && new Date(l.paidUntil).getTime() <= Date.now();
 function WorkspaceContent() {
   const { user, notify, subscribeLive } = useApp();
+  const [routeParams] = useSearchParams();
   const [tab, setTab] = useState("overview"),
     [confirm, setConfirm] = useState<{ id: string; action: string } | null>(
       null,
@@ -981,6 +1022,23 @@ function WorkspaceContent() {
     [chat, setChat] = useState<string | null>(null);
   const isAdmin = user?.role === "admin";
   const isBusiness = user?.accountType === "business" && !isAdmin;
+  useEffect(() => {
+    const requested = routeParams.get("tab");
+    if (
+      requested &&
+      [
+        "overview",
+        "inventory",
+        "leads",
+        ...(isAdmin
+          ? ["businesses", "payments", "users", "audit"]
+          : isBusiness
+            ? ["business"]
+            : []),
+      ].includes(requested)
+    )
+      setTab(requested);
+  }, [routeParams, isAdmin, isBusiness]);
   const {
     data: listings,
     reload: reloadListings,

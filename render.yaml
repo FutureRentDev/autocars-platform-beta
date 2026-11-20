@@ -1,0 +1,40 @@
+# One API instance: SQLite and uploaded photos share this persistent disk.
+# Supply the prompted values privately in Render when creating the Blueprint.
+services:
+  - type: web
+    name: autocars-api
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: off
+    healthCheckPath: /api/health
+    disk:
+      name: autocars-data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATA_DIR
+        value: /data
+      - key: TRUST_PROXY
+        value: "true"
+      - key: WEB_ORIGIN
+        value: https://api.autocars.co.za
+      - key: SMTP_URL
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: WEB_PUSH_PUBLIC_KEY
+        sync: false
+      - key: WEB_PUSH_PRIVATE_KEY
+        sync: false
+      - key: WEB_PUSH_SUBJECT
+        value: https://api.autocars.co.za
