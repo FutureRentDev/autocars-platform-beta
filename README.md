@@ -87,7 +87,7 @@ Saved searches are bookmarks and do not yet generate matching-stock alerts. Live
 ## White labelling
 
 1. Edit `config/brand.json`: name, tagline, slug, scheme, domain, support email, currency/locale, theme and application identifiers. The interface is dark-only: `primary` is the light accent colour and `background` the near-black page colour.
-2. Replace `apps/web/public/logo.png` and `icon.svg`; run `npm run brand:assets` to regenerate native/PWA assets. The supplied logo is preserved. The native header displays its black background as a badge.
+2. Replace the transparent wordmark at `apps/web/public/logo.png` and the original monochrome logo at `apps/mobile/assets/autologo.png`; run `npm run brand:assets`. The generator copies the transparent wordmark to the native header/splash and extracts the exact opening A from `autologo.png` for iOS, Android adaptive icons, PWA icons, favicon and notification badges. Generated launcher icons have solid backgrounds; adaptive foregrounds and notification badges retain transparency. The original source files are preserved.
 3. Replace the hero image in `apps/web/public/hero.jpg` and `apps/mobile/assets/hero.jpg` if desired. Current editorial image: [Porsche photograph on Unsplash](https://images.unsplash.com/photo-1503376780353-7e6692767b70); source image URL is recorded in `docs/architecture.md`.
 4. Set your environment and business/legal copy, rebuild web/native, and provision separate persistent storage and administrator accounts per deployment.
 

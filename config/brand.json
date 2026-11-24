@@ -12,6 +12,6 @@
   "background": "#0a0a0a",
   "adFee": 500,
   "adDays": 30,
-  "iosBundleIdentifier": "za.co.autocars.app",
+  "iosBundleIdentifier": "com.futurerent.autocars",
   "androidPackage": "za.co.autocars.app"
 }

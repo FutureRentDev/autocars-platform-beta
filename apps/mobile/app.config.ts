@@ -76,7 +76,8 @@ export default function appConfig({ projectRoot }: { projectRoot: string }) {
       android: {
         package: brand.androidPackage,
         adaptiveIcon: {
-          foregroundImage: "./assets/icon.png",
+          foregroundImage: "./assets/adaptive-icon.png",
+          monochromeImage: "./assets/adaptive-icon.png",
           backgroundColor: brand.background,
         },
         permissions: ["POST_NOTIFICATIONS"],

@@ -44,7 +44,9 @@ The source is implemented and buildable; these owner/environment tasks remain be
 
 ## TestFlight preparation — 19 November 2026
 
-The linked Expo project is `@ryanthomas3110/autocars`, bundle ID `za.co.autocars.app`. The production profile explicitly uses App Store distribution with the development client disabled. The existing EAS iOS builds inspected during this task were internal development builds and cannot be submitted to TestFlight.
+The linked Expo project is `@ryanthomas3110/autocars`. The iOS bundle ID is `com.futurerent.autocars`, matching the existing App Store Connect app `6759597993`; Android continues to use `za.co.autocars.app`. The production profile explicitly uses App Store distribution with the development client disabled. The existing EAS iOS builds inspected on 19 November were internal development builds and could not be submitted to TestFlight.
+
+On 20 November, Apple rejected production build `1ec394c6-4705-4fd4-ac31-49f3e28a7ae1` with error 90055 because it used the previous iOS identifier `za.co.autocars.app`. Rebuild with the corrected identifier; resubmitting that rejected IPA cannot fix the mismatch. Allow EAS to configure provisioning and push credentials for `com.futurerent.autocars` under the Apple team that owns the existing app. The production EAS API origin is now `https://beta-api.autocars.co.za`, whose health endpoint and PWA assets were verified publicly.
 
 Before starting the store build, deploy this API at a public HTTPS origin and set `EXPO_PUBLIC_API_URL` in the Expo **production** environment. The inspected production environment had no variables. Do not point this value at the old website unless it actually serves the current API, and do not use a Mac LAN address. Verify `/api/health` and the current platform endpoints at the chosen origin first.
 

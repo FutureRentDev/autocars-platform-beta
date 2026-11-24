@@ -13,7 +13,8 @@ assert.equal(manifest.prefer_related_applications, false);
 for (const size of ["192x192", "512x512"]) {
   const icon = manifest.icons.find((i) => i.sizes === size);
   assert.ok(icon, `Missing ${size} icon`);
-  assert.ok((await stat(resolve(root, icon.src.replace(/^\//, "")))).size > 0);
+  const pathname = new URL(icon.src, "https://autocars.example").pathname;
+  assert.ok((await stat(resolve(root, pathname.replace(/^\//, "")))).size > 0);
 }
 const html = await readFile(resolve(root, "index.html"), "utf8");
 assert.match(html, /rel="manifest"/);

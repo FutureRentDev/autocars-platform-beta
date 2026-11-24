@@ -9,7 +9,7 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title || "AutoCars", {
       body: data.body || "",
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      badge: "/badge.png",
       data: data.data || {},
     }),
   );

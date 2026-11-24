@@ -3096,8 +3096,6 @@ const s = StyleSheet.create({
     width: 126,
     height: 29,
     resizeMode: "contain",
-    backgroundColor: "#000",
-    borderRadius: 4,
   },
   link: { fontSize: 11, fontWeight: "600", color: brand.primary },
   content: { padding: 22 },
