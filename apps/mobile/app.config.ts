@@ -67,6 +67,7 @@ export default function appConfig({ projectRoot }: { projectRoot: string }) {
         supportsTablet: true,
         bundleIdentifier: brand.iosBundleIdentifier,
         infoPlist: {
+          ITSAppUsesNonExemptEncryption: false,
           NSPhotoLibraryUsageDescription:
             "Choose photos for your vehicle listing.",
           NSLocalNetworkUsageDescription:
