@@ -2849,3 +2849,132 @@ tr:last-child td {
   font-weight: 400;
   text-decoration: underline;
 }
+
+/* Shared account and vehicle hierarchy across native and PWA. */
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.profile-identity > div {
+  min-width: 0;
+}
+.profile-identity p {
+  overflow-wrap: anywhere;
+}
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #252525;
+  flex: 0 0 72px;
+}
+.profile-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 600;
+}
+.profile-photo-actions {
+  margin: 12px 0 20px;
+}
+.profile-photo-actions label {
+  position: relative;
+  cursor: pointer;
+}
+.profile-photo-actions input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.profile-photo-actions label:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.profile-form {
+  margin-top: 24px;
+}
+.field-error {
+  color: #f08a80;
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.profile-form [aria-invalid="true"] {
+  border-color: #f08a80;
+}
+.vehicle-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 28px;
+}
+.vehicle-pill {
+  border-radius: 999px;
+  background: #202020;
+  border: 1px solid #383838;
+  color: #e8e8e3;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.vehicle-specification {
+  margin-bottom: 30px;
+}
+.vehicle-specification > h2 {
+  font-size: 23px;
+  margin: 0 0 18px;
+}
+.vehicle-spec-group {
+  border: 1px solid #303030;
+  background: #141414;
+  border-radius: 14px;
+  padding: 20px;
+  margin: 0 0 14px;
+}
+.vehicle-spec-group h3 {
+  font-size: 15px;
+  margin: 0 0 18px;
+}
+.vehicle-spec-group dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0;
+}
+.vehicle-spec-group dt {
+  color: #999;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.vehicle-spec-group dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.auth-form > .eyebrow,
+.auth-form > h2,
+.auth-form > p {
+  text-align: center;
+}
+.toast {
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  max-height: 70dvh;
+  overflow-y: auto;
+}
+
+.profile-panel {
+  border-radius: 16px;
+}
+
+.profile-identity h3 {
+  overflow-wrap: anywhere;
+}

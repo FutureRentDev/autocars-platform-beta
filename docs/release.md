@@ -102,3 +102,40 @@ Google Workspace can send application mail using smtp.gmail.com over TLS on 465/
 References: https://docs.docker.com/engine/install/ubuntu/ ; https://caddyserver.com/docs/automatic-https ; https://docs.cpanel.net/whm/dns-functions/dns-zone-manager/ ; https://support.google.com/accounts/answer/185833/sign-in-with-app-passwords .
 
 The owner selected `beta-api.autocars.co.za` for the new TestFlight backend. The Vultr Compose default and private `.env.vultr` now use that hostname. Existing API/website DNS records and server services were not modified. Compose validation passed without starting containers. Deployment planning now uses a fresh Vultr instance; review the existing hosting environment separately before reusing it. Configure the beta A record only after the fresh server IP is known, then verify HTTPS `/api/health` before setting EAS production EXPO_PUBLIC_API_URL.
+
+## Profile and interface update — 24 November 2026
+
+Deploy the API/PWA before installing the new native builds. Keep the beta data path `/home/autocars/platform-beta-data`; do not delete or recreate its database. The API automatically adds migration 9 (`user_details`) on restart. Profile photos are stored in `avatars` alongside `uploads`, and the updated backup script includes both folders. Existing verified emails, roles, account types, listings and sessions are retained.
+
+On the Mac, commit and push the reviewed changes to `beta/main`. On WHM, take a backup using the currently deployed code **before** pulling the migration:
+
+```bash
+(
+set -e
+cd /home/autocars/platform-beta
+install -d -m 700 -o autocars -g autocars /home/autocars/backups
+AUTOCARS_BACKUP_PATH="/home/autocars/backups/before-profile-$(date -u +%Y%m%dT%H%M%SZ)"
+runuser -u autocars -- env \
+  PATH=/opt/autocars-node/bin:/usr/local/bin:/usr/bin:/bin \
+  DATA_DIR=/home/autocars/platform-beta-data \
+  /opt/autocars-node/bin/npm run backup -- "$AUTOCARS_BACKUP_PATH"
+
+runuser -u autocars -- git \
+  -c core.sshCommand="ssh -F /dev/null -i /home/autocars/.ssh/autocars_beta_deploy -o IdentitiesOnly=yes -o UserKnownHostsFile=/home/autocars/.ssh/autocars_beta_known_hosts -o StrictHostKeyChecking=yes" \
+  pull --ff-only origin main
+
+runuser -u autocars -- env \
+  PATH=/opt/autocars-node/bin:/usr/local/bin:/usr/bin:/bin \
+  /opt/autocars-node/bin/npm run build
+runuser -u autocars -- env \
+  PATH=/opt/autocars-node/bin:/usr/local/bin:/usr/bin:/bin \
+  /opt/autocars-node/bin/npm run test:pwa
+systemctl restart autocars-beta.service
+curl -fsS --retry 5 --retry-connrefused --retry-delay 1 \
+  https://beta-api.autocars.co.za/api/health
+)
+```
+
+The new package is a mobile-only icon dependency; API/PWA dependencies are unchanged for this update. Reload the installed PWA when it offers an update, then test profile editing and a photo change in two sessions of the same account. Make sure name/location edits and the photo appear in both, and that another account's profile is unaffected. Test an invalid form on iPhone and Android with the keyboard open. Repeat in an enquiry/detail modal; validation must be visible above the modal. Verify signed-out Saved/Sell/Inbox/Account supporting text, envelope badges and grouped vehicle information.
+
+From `apps/mobile` on the Mac, build iOS with `npx eas-cli@latest build --profile production --platform ios` and Android APK with `npx eas-cli@latest build --profile preview --platform android`. Submit the exact new iOS build ID through the existing production submit profile; the iOS bundle identifier remains `com.futurerent.autocars` and Android remains `za.co.autocars.app`. No native signing identity or existing API repository changes are required.

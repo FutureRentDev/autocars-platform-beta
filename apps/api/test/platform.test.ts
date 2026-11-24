@@ -751,6 +751,9 @@ test("built web serving emits safe vehicle metadata, sitemap and genuine API err
     const missing = await app.inject("/api/missing");
     assert.equal(missing.statusCode, 404);
     assert.equal(missing.json().message, "Not found.");
+    const missingAvatar = await app.inject("/avatars/not-a-photo.webp");
+    assert.equal(missingAvatar.statusCode, 404);
+    assert.equal(missingAvatar.json().message, "Not found.");
     assert.match((await app.inject("/garage")).body, /<div id="root">/);
   } finally {
     await app.close();

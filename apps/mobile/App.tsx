@@ -23,11 +23,12 @@ import {
   View,
   KeyboardAvoidingView,
   Keyboard,
-  Share,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { ProfilePanel } from "./src/ProfilePanel";
 import { resolveApiUrl } from "./src/api-url";
 import * as SecureStore from "expo-secure-store";
 import * as ImagePicker from "expo-image-picker";
@@ -35,7 +36,6 @@ import * as ExpoLinking from "expo-linking";
 
 import {
   ApiClient,
-  type LiveStatus,
   ApiError,
   LiveClient,
   notificationRoute,
@@ -47,6 +47,8 @@ import {
   provinces,
   money,
   payment,
+  vehicleHighlights,
+  vehicleDetailGroups,
   type Listing,
   type User,
   type Filters,
@@ -255,8 +257,8 @@ function Empty({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={s.empty}>
       <Text style={s.emptyIcon}>↗</Text>
-      <Text style={s.subtitle}>{title}</Text>
-      <Text style={s.muted}>{children}</Text>
+      <Text style={[s.subtitle, s.centeredText]}>{title}</Text>
+      <Text style={[s.muted, s.centeredText]}>{children}</Text>
     </View>
   );
 }
@@ -405,7 +407,6 @@ function AutoCars() {
     [enquiryConsent, setEnquiryConsent] = useState(false),
     [showMine, setShowMine] = useState(false),
     [deleteOpen, setDeleteOpen] = useState(false),
-    [liveStatus, setLiveStatus] = useState<LiveStatus>("connecting"),
     [accountType, setAccountType] = useState<"customer" | "business">(
       "customer",
     ),
@@ -426,10 +427,7 @@ function AutoCars() {
     } | null>(null),
     [chatTruncated, setChatTruncated] = useState(false),
     [chatMsgs, setChatMsgs] = useState<ChatMessage[]>([]),
-    [chatDraft, setChatDraft] = useState(""),
-    [toast, setToast] = useState<{ title: string; message: string } | null>(
-      null,
-    );
+    [chatDraft, setChatDraft] = useState("");
   const stateRef = useRef({ filters, page }),
     detailRef = useRef<Listing | null>(null),
     liveRef = useRef<LiveClient | null>(null);
@@ -440,8 +438,7 @@ function AutoCars() {
     message: string,
     buttons?: Parameters<typeof Alert.alert>[2],
   ) => {
-    if (buttons?.length) Alert.alert(title, message, buttons);
-    else setToast({ title, message });
+    Alert.alert(title, message, buttons);
   };
   const [pushBusy, setPushBusy] = useState(false),
     [notices, setNotices] = useState<any[]>([]),
@@ -597,11 +594,6 @@ function AutoCars() {
     setError(m);
     notify(brand.name, m);
   };
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3800);
-    return () => clearTimeout(t);
-  }, [toast]);
   const unreadTotal =
     leads.reduce((n, l) => n + (l.unread || 0), 0) +
     enquiries.reduce((n, e) => n + (e.unread || 0), 0);
@@ -691,6 +683,7 @@ function AutoCars() {
       if (!enquireOpen) {
         setName(r.user.name);
         setEmail(r.user.email);
+        setPhone(r.user.phone || "");
       }
 
       setForm((p) => ({ ...p, sellerName: p.sellerName || r.user.name }));
@@ -846,7 +839,6 @@ function AutoCars() {
       (topics) => {
         void liveRefresh.current(topics);
       },
-      setLiveStatus,
     );
     client.start();
     liveRef.current = client;
@@ -1184,16 +1176,6 @@ function AutoCars() {
         </Pressable>
         <Pressable onPress={() => setFinanceOpen(true)}>
           <Text style={s.link}>Know your budget ↗</Text>
-          <Text
-            style={{
-              fontSize: 8,
-              color: "#888",
-              marginTop: 4,
-              textAlign: "right",
-            }}
-          >
-            {liveStatus === "live" ? "● Live" : "○ Reconnecting"}
-          </Text>
         </Pressable>
       </View>
       <KeyboardAvoidingView
@@ -1258,7 +1240,7 @@ function AutoCars() {
                         load(f);
                       }}
                     >
-                      <Text style={{ color: "#111", fontSize: 23 }}>↗</Text>
+                      <Ionicons name="search-outline" size={22} color="#111" />
                     </Pressable>
                   </View>
                   <Pressable onPress={() => setFilterOpen(true)}>
@@ -1401,8 +1383,10 @@ function AutoCars() {
           )}
           {tab === "Saved" && (
             <View style={s.content}>
-              <Text style={s.eyebrow}>YOUR CORNER OF THE ROAD</Text>
-              <Text style={s.title}>My garage.</Text>
+              <Text style={[s.eyebrow, !user && s.centeredText]}>
+                YOUR CORNER OF THE ROAD
+              </Text>
+              <Text style={[s.title, !user && s.centeredText]}>My garage.</Text>
               {!user ? (
                 requireSignIn
               ) : (
@@ -1470,8 +1454,10 @@ function AutoCars() {
           )}
           {tab === "Sell" && (
             <View style={s.content}>
-              <Text style={s.eyebrow}>A NEW CHAPTER FOR YOUR CAR</Text>
-              <Text style={s.title}>
+              <Text style={[s.eyebrow, !user && s.centeredText]}>
+                A NEW CHAPTER FOR YOUR CAR
+              </Text>
+              <Text style={[s.title, !user && s.centeredText]}>
                 {editId ? "Make it shine." : "Great car. New possibilities."}
               </Text>
               {!user ? (
@@ -1726,8 +1712,12 @@ function AutoCars() {
           )}
           {tab === "Inbox" && (
             <View style={s.content}>
-              <Text style={s.eyebrow}>KEEP THE CONVERSATION MOVING</Text>
-              <Text style={s.title}>Your enquiries.</Text>
+              <Text style={[s.eyebrow, !user && s.centeredText]}>
+                KEEP THE CONVERSATION MOVING
+              </Text>
+              <Text style={[s.title, !user && s.centeredText]}>
+                Your messages.
+              </Text>
               {!user ? (
                 requireSignIn
               ) : leads.length ? (
@@ -1838,8 +1828,10 @@ function AutoCars() {
           )}
           {tab === "Account" && (
             <View style={s.content}>
-              <Text style={s.eyebrow}>YOU'RE IN THE DRIVER'S SEAT</Text>
-              <Text style={s.title}>
+              <Text style={[s.eyebrow, !user && s.centeredText]}>
+                YOU'RE IN THE DRIVER'S SEAT
+              </Text>
+              <Text style={[s.title, !user && s.centeredText]}>
                 {user
                   ? `Hello, ${user.name.split(" ")[0]}.`
                   : authMode === "register"
@@ -1852,8 +1844,17 @@ function AutoCars() {
               </Text>
               {user && authMode !== "reset" ? (
                 <>
+                  <ProfilePanel
+                    api={api}
+                    user={user}
+                    onChange={(updated) =>
+                      setUser((current) =>
+                        current?.id === updated.id ? updated : current,
+                      )
+                    }
+                    notify={notify}
+                  />
                   <Text style={s.muted}>
-                    {user.email} ·{" "}
                     {user.verified ? "Email verified" : "Email not verified"}
                   </Text>
                   {!user.verified && (
@@ -2119,22 +2120,7 @@ function AutoCars() {
                   <Button outline onPress={() => setFinanceOpen(true)}>
                     Finance calculator ↗
                   </Button>
-                  <Button
-                    outline
-                    onPress={async () => {
-                      try {
-                        const data = await api.get("/me/export");
-                        await Share.share({
-                          message: JSON.stringify(data, null, 2),
-                          title: `${brand.name} account data`,
-                        });
-                      } catch (e) {
-                        report(e);
-                      }
-                    }}
-                  >
-                    Export my account data ↗
-                  </Button>
+
                   {user.role === "admin" && (
                     <Text style={s.disclaimer}>
                       The full administration workspace is available on the
@@ -2387,7 +2373,13 @@ function AutoCars() {
                 </>
               )}
               <Pressable onPress={() => setLegalOpen(true)}>
-                <Text style={[s.link, { marginVertical: 25 }]}>
+                <Text
+                  style={[
+                    s.link,
+                    { marginVertical: 25 },
+                    !user && s.centeredText,
+                  ]}
+                >
                   Privacy & marketplace terms ↗
                 </Text>
               </Pressable>
@@ -2406,7 +2398,7 @@ function AutoCars() {
       <SafeAreaView edges={["bottom"]} style={s.tabBar}>
         <View style={s.tabs}>
           {(["Explore", "Saved", "Sell", "Inbox", "Account"] as Tab[]).map(
-            (t, i) => (
+            (t) => (
               <Pressable
                 key={t}
                 accessibilityRole="tab"
@@ -2422,11 +2414,21 @@ function AutoCars() {
                     refreshAccount();
                 }}
               >
-                <Text
-                  style={[s.tabIcon, tab === t && { color: brand.primary }]}
-                >
-                  {["⌕", "♡", "＋", "▱", "◉"][i]}
-                </Text>
+                <Ionicons
+                  name={
+                    (
+                      {
+                        Explore: "search-outline",
+                        Saved: "heart-outline",
+                        Sell: "add-circle-outline",
+                        Inbox: "mail-outline",
+                        Account: "person-circle-outline",
+                      } as const
+                    )[t]
+                  }
+                  size={24}
+                  color={tab === t ? brand.primary : "#8d8d88"}
+                />
                 <Text
                   style={[
                     s.tabText,
@@ -2615,14 +2617,32 @@ function AutoCars() {
                 </Text>
                 <Text style={s.muted}>{detail.variant}</Text>
                 <Text style={s.price}>{money(detail.price)}</Text>
-                <Text style={s.muted}>
-                  {detail.mileage.toLocaleString()} km · {detail.transmission} ·{" "}
-                  {detail.fuel}
-                </Text>
+                <View style={s.pillRow}>
+                  {vehicleHighlights(detail).map((value) => (
+                    <View key={value} style={s.specPill}>
+                      <Text style={s.specPillText}>{value}</Text>
+                    </View>
+                  ))}
+                </View>
                 <Text style={s.small}>
-                  ⌖ {detail.city}, {detail.province}
+                  {detail.city}, {detail.province}
                 </Text>
-                <View style={s.divider} />
+                <Text style={[s.subtitle, { marginTop: 28 }]}>
+                  Vehicle details
+                </Text>
+                {vehicleDetailGroups(detail).map((group) => (
+                  <View key={group.title} style={s.specGroup}>
+                    <Text style={s.specGroupTitle}>{group.title}</Text>
+                    <View style={s.specGrid}>
+                      {group.items.map(([label, value]) => (
+                        <View key={label} style={s.specItem}>
+                          <Text style={s.specLabel}>{label}</Text>
+                          <Text style={s.specValue}>{value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
                 <Text style={s.subtitle}>Meet your next car.</Text>
                 <Text style={s.muted}>{detail.description}</Text>
                 <Button outline onPress={() => favourite(detail)}>
@@ -2845,7 +2865,7 @@ function AutoCars() {
             </Text>
             <Text style={s.subtitle}>Your choices</Text>
             <Text style={s.muted}>
-              Export or delete your account from Account. Deletion removes your
+              Edit or delete your account from Account. Deletion removes your
               listings and photos. Enquiries sent to other sellers remain in
               their records, detached from your account. Contact the operator
               for removal of those records and backup retention details.
@@ -3064,18 +3084,44 @@ function AutoCars() {
           </SafeAreaView>
         </KeyboardAvoidingView>
       </Modal>
-      {toast && (
-        <View style={s.toastWrap} pointerEvents="none">
-          <Pressable style={s.toast} onPress={() => setToast(null)}>
-            <Text style={s.toastTitle}>{toast.title}</Text>
-            <Text style={s.toastMessage}>{toast.message}</Text>
-          </Pressable>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
 const s = StyleSheet.create({
+  centeredText: { textAlign: "center", alignSelf: "stretch" },
+  pillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginVertical: 16,
+  },
+  specPill: {
+    borderRadius: 20,
+    backgroundColor: "#202020",
+    borderWidth: 1,
+    borderColor: "#383838",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  specPillText: { color: "#e8e8e3", fontSize: 12, fontWeight: "500" },
+  specGroup: {
+    backgroundColor: "#141414",
+    borderWidth: 1,
+    borderColor: "#303030",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 14,
+  },
+  specGroupTitle: {
+    color: "#f2f2ee",
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 16,
+  },
+  specGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+  specItem: { width: "46%", gap: 5 },
+  specLabel: { color: "#999", fontSize: 11 },
+  specValue: { color: "#f2f2ee", fontSize: 14, fontWeight: "500" },
   screen: { flex: 1, backgroundColor: "#0a0a0a", color: "#f2f2f0" },
   flex: { flex: 1, color: "#f2f2f0" },
   row: {
@@ -3288,7 +3334,6 @@ const s = StyleSheet.create({
   tabs: { flexDirection: "row", justifyContent: "space-around", height: 64 },
   tab: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4 },
   tabText: { fontSize: 8, color: "#7d7d78" },
-  tabIcon: { fontSize: 25, color: "#8a8a85", height: 30 },
   compareBar: {
     marginHorizontal: 18,
     marginBottom: 10,
@@ -3440,36 +3485,6 @@ const s = StyleSheet.create({
     paddingVertical: 11,
   },
   chatSendText: { color: "#111", fontWeight: "700", fontSize: 13 },
-  toastWrap: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    paddingTop: 12,
-    zIndex: 100,
-  },
-  toast: {
-    backgroundColor: "#1c1c1c",
-    borderWidth: 1,
-    borderColor: "#3a3a3a",
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    maxWidth: "88%",
-    shadowColor: "#000",
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
-  },
-  toastTitle: {
-    color: "#f2f2ee",
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  toastMessage: { color: "#c8c8c3", fontSize: 13, lineHeight: 18 },
   tabBadge: { color: "#e03131", fontWeight: "700" },
   unreadDot: {
     color: "#e03131",

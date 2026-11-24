@@ -1,6 +1,6 @@
 # API reference
 
-All paths below have `/api` prefix. Requests/responses are JSON except multipart photo uploads and the URL-encoded Payfast notification callback. Errors use `{ "message": "…" }` with appropriate HTTP status. The shared `ApiClient` provides transport and matching TypeScript models.
+All paths below have `/api` prefix. Requests/responses are JSON except multipart photo uploads and the URL-encoded Payfast notification callback. Errors use `{ "message": "…" }` with appropriate HTTP status; validation failures also include `fieldErrors`, keyed by field path. The shared `ApiClient` provides transport and matching TypeScript models.
 
 Web: session cookie and an allowed `Origin` on writes. Native: `Authorization: Bearer <token>`. Native login/signup sends `X-Client: mobile`, which returns a token instead of setting a web cookie. Roles/ownership are always checked server-side.
 
@@ -10,6 +10,9 @@ Web: session cookie and an allowed `Origin` on writes. Native: `Authorization: B
 | POST | `/auth/register` | name, email, password (12–128 chars), consent=true, optional `accountType` (`customer` or `business`) with `business` details for business accounts; creates an application with status `pending` |
 | POST | `/auth/login` | email, password; starts a 30-day session |
 | GET | `/auth/me` | Current authenticated user |
+| PATCH | `/me/profile` | Own profile: optional `name` (2–100 characters), `phone`, `city`, `province`. Returns `{user}`. Rejects role, email, avatar URL and account ownership fields |
+| POST | `/me/avatar` | Own multipart profile photo, maximum 8 MB; available to customer and pending business accounts. Re-encodes/crops to 512×512 WebP, replaces the previous photo, and returns `{user}` |
+| DELETE | `/me/avatar` | Remove own profile photo, returns `{user}` |
 | POST | `/auth/logout` | Revoke current session |
 | POST | `/auth/forgot` | email; send a recovery link if account exists, requires SMTP |
 | POST | `/auth/reset` | token, password; consumes reset token, revokes all sessions |
@@ -60,7 +63,9 @@ In production the server also serves the built PWA, `/robots.txt`, `/sitemap.xml
 
 `GET /api/live` upgrades to a WebSocket. Web clients authenticate implicitly via the session cookie; native clients send `{"type":"authenticate","token":"<session token>"}` after connecting (max 3 attempts). The server sends `{"type":"ready"}` on connect and `{"type":"changed","topics":[...]}` whenever a relevant write completes. Topics: `catalogue` for published-inventory changes visible to everyone, and `account`, `inventory`, `enquiries`, `garage`, `businesses`, `notifications` (plus `admin` for admins) for changes targeting a specific user. Clients should reload the matching data on receipt; `LiveClient` in `@autocars/core` implements reconnect, heartbeat and message authentication for both apps.
 
-Business accounts cannot upload photos or create/edit listings until an admin activates their application with agreed terms (`canSell` in `@autocars/core` mirrors this rule client-side). Suspending or rejecting an activated business returns its published listings to pending review.
+Business accounts cannot upload listing photos or create/edit listings until an admin activates their application with agreed terms (`canSell` in `@autocars/core` mirrors this rule client-side). Profile editing and profile photos remain available before selling activation. Suspending or rejecting an activated business returns its published listings to pending review.
+
+Current-user responses include `phone`, `city`, `province` and `avatarUrl`, defaulting to empty strings for existing accounts. Profile writes publish scoped live account updates and refresh the staff directory; profile contact details are not added to public listing responses. Profile photos have public, randomly generated `/avatars/<uuid>.webp` URLs, like listing images; their original files/EXIF are not served. Files live in `DATA_DIR/avatars` and are included by the backup command. Account deletion removes the profile row and photo. Email and account type are not changed by the profile editor.
 
 ## Advertising fees
 

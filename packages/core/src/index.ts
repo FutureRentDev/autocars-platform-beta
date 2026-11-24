@@ -31,6 +31,10 @@ export type User = {
   verified: boolean;
   accountType: "customer" | "business";
   businessStatus: BusinessStatus | null;
+  phone?: string;
+  city?: string;
+  province?: string;
+  avatarUrl?: string;
 };
 export type Listing = {
   id: string;
@@ -72,6 +76,48 @@ export type Filters = {
   sort?: string;
   page?: string;
 };
+export type ProfileDetails = {
+  name: string;
+  phone: string;
+  city: string;
+  province: string;
+};
+export const profileDetails = (user: User): ProfileDetails => ({
+  name: user.name,
+  phone: user.phone || "",
+  city: user.city || "",
+  province: user.province || "",
+});
+export const vehicleHighlights = (car: Listing) =>
+  [String(car.year), car.bodyType, car.fuel, car.transmission].filter(Boolean);
+export const vehicleDetailGroups = (car: Listing) => [
+  {
+    title: "Vehicle",
+    items: [
+      ["Make", car.make],
+      ["Model", car.model],
+      ["Variant", car.variant],
+      ["Year", String(car.year)],
+      ["Body type", car.bodyType],
+      ["Mileage", `${car.mileage.toLocaleString("en-ZA")} km`],
+    ].filter(([, value]) => !!value),
+  },
+  {
+    title: "Engine & drive",
+    items: [
+      ["Fuel type", car.fuel],
+      ["Transmission", car.transmission],
+    ],
+  },
+  {
+    title: "Location & seller",
+    items: [
+      ["City / town", car.city],
+      ["Province", car.province],
+      ["Seller", car.sellerName],
+    ].filter(([, value]) => !!value),
+  },
+];
 export type ChatMessage = {
   id: string;
   leadId: string;
@@ -148,6 +194,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status = 0,
+    public fieldErrors: Record<string, string> = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -192,7 +239,11 @@ export class ApiClient {
         );
       });
       if (!res.ok)
-        throw new ApiError(data.message || "Request failed.", res.status);
+        throw new ApiError(
+          data.message || "Request failed.",
+          res.status,
+          data.fieldErrors || {},
+        );
       return data;
     } catch (e) {
       if (e instanceof ApiError) throw e;

@@ -69,5 +69,9 @@ INSERT OR IGNORE INTO migrations(version) VALUES(1);
     CREATE TABLE payment_orders(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,amount INTEGER NOT NULL,status TEXT NOT NULL,purpose TEXT NOT NULL,provider_id TEXT UNIQUE,listing_id TEXT REFERENCES listings(id) ON DELETE SET NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,error TEXT NOT NULL DEFAULT '');
     CREATE INDEX payment_orders_user ON payment_orders(user_id,created_at);
     INSERT INTO migrations(version) VALUES(8);COMMIT;`);
+  if (!db.prepare("SELECT version FROM migrations WHERE version=9").get())
+    db.exec(`BEGIN;
+    CREATE TABLE user_details(user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,phone TEXT NOT NULL DEFAULT '',city TEXT NOT NULL DEFAULT '',province TEXT NOT NULL DEFAULT '',avatar_url TEXT NOT NULL DEFAULT '');
+    INSERT INTO migrations(version) VALUES(9);COMMIT;`);
   return db;
 }

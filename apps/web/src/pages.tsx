@@ -30,6 +30,8 @@ import {
   money,
   payment,
   bodyTypes,
+  vehicleHighlights,
+  vehicleDetailGroups,
   type Listing,
   type SavedSearch,
   type Filters,
@@ -504,32 +506,32 @@ export function Detail() {
               />
             </button>
           </div>
-          <div className="spec-grid">
-            {[
-              {
-                icon: Gauge,
-                label: "Mileage",
-                value: `${car.mileage.toLocaleString()} km`,
-              },
-              {
-                icon: Settings2,
-                label: "Transmission",
-                value: car.transmission,
-              },
-              { icon: Fuel, label: "Fuel type", value: car.fuel },
-              {
-                icon: MapPin,
-                label: "Location",
-                value: `${car.city}, ${car.province}`,
-              },
-            ].map((s) => (
-              <div key={s.label}>
-                <s.icon size={21} strokeWidth={1.4} />
-                <small>{s.label}</small>
-                <b>{s.value}</b>
-              </div>
+          <div className="vehicle-pills" aria-label="Vehicle highlights">
+            {vehicleHighlights(car).map((value) => (
+              <span key={value} className="vehicle-pill">
+                {value}
+              </span>
             ))}
           </div>
+          <section
+            className="vehicle-specification"
+            aria-label="Vehicle details"
+          >
+            <h2>Vehicle details</h2>
+            {vehicleDetailGroups(car).map((group) => (
+              <section key={group.title} className="vehicle-spec-group">
+                <h3>{group.title}</h3>
+                <dl>
+                  {group.items.map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ))}
+          </section>
           <h3>Meet your next car.</h3>
           <p className="description">{car.description}</p>
           <button className="button outline" onClick={() => toggleCompare(car)}>
@@ -1057,12 +1059,12 @@ export function Legal() {
       </p>
       <h2>Your choices</h2>
       <p>
-        You can export your account data or delete your account from the Account
-        page. Deleting an account removes its listings, uploads, sessions,
-        favourites and saved searches. Enquiries you sent to other sellers
-        remain with those sellers but are detached from your account; request
-        removal from the operator if needed. Operational backups have their own
-        retention schedule, which the operator must publish.
+        You can edit your profile or delete your account from the Account page.
+        Deleting an account removes its profile photo, listings, uploads,
+        sessions, favourites and saved searches. Enquiries you sent to other
+        sellers remain with those sellers but are detached from your account;
+        request removal from the operator if needed. Operational backups have
+        their own retention schedule, which the operator must publish.
       </p>
       <h2>Buying & selling</h2>
       <p>

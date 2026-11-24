@@ -158,6 +158,11 @@ export async function buildApp(
     "uploads",
   );
   mkdirSync(uploadDir, { recursive: true });
+  const avatarDir = resolve(
+    directory === ":memory:" ? "/tmp/autocars-test-uploads" : directory,
+    "avatars",
+  );
+  mkdirSync(avatarDir, { recursive: true });
   const db = openDatabase(directory);
   const app = Fastify({
     logger:
@@ -218,6 +223,15 @@ export async function buildApp(
     email: u.email,
     role: u.role,
     verified: !!u.verified,
+    ...(() => {
+      const details = read("SELECT * FROM user_details WHERE user_id=?", u.id);
+      return {
+        phone: details?.phone || "",
+        city: details?.city || "",
+        province: details?.province || "",
+        avatarUrl: details?.avatar_url || "",
+      };
+    })(),
     accountType:
       read("SELECT account_type FROM account_profiles WHERE user_id=?", u.id)
         ?.account_type || "customer",
@@ -424,6 +438,8 @@ export async function buildApp(
         route.startsWith("/api/me/business") ||
         route === "/api/leads/:id/messages" ||
         route === "/api/me" ||
+        route === "/api/me/profile" ||
+        route === "/api/me/avatar" ||
         route === "/api/auth/register" ||
         route === "/api/auth/verify",
     };
@@ -517,6 +533,12 @@ export async function buildApp(
     decorateReply: false,
     maxAge: "1d",
   });
+  await app.register(staticFiles, {
+    root: avatarDir,
+    prefix: "/avatars/",
+    decorateReply: false,
+    maxAge: "1d",
+  });
   app.addHook("onRequest", async (req) => {
     if (req.routeOptions.url === "/api/payments/payfast/itn") return;
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
@@ -535,6 +557,9 @@ export async function buildApp(
   app.setErrorHandler((err: any, req, reply) => {
     if (err instanceof z.ZodError)
       return reply.code(400).send({
+        fieldErrors: Object.fromEntries(
+          err.issues.map((i: any) => [i.path.join("."), i.message]),
+        ),
         message: err.issues
           .map((i: any) => `${i.path.join(".")}: ${i.message}`)
           .join("; "),
@@ -1949,7 +1974,7 @@ export async function buildApp(
     return {
       items: all(
         "SELECT id,name,email,role,verified,created_at FROM users ORDER BY created_at DESC LIMIT 1000",
-      ),
+      ).map((user) => ({ ...user, ...publicUser(user) })),
     };
   });
   app.get("/api/admin/audit", async (req) => {
@@ -1959,6 +1984,125 @@ export async function buildApp(
         "SELECT a.*,u.name AS actor FROM audit a LEFT JOIN users u ON a.actor_id=u.id ORDER BY a.created_at DESC LIMIT 200",
       ),
     };
+  });
+  const profileSchema = z
+    .object({
+      name: z
+        .string()
+        .trim()
+        .min(2, "Enter at least 2 characters.")
+        .max(100)
+        .optional(),
+      phone: z
+        .string()
+        .trim()
+        .max(30)
+        .refine(
+          (s) =>
+            !s || (/^[+()\d\s-]+$/.test(s) && s.replace(/\D/g, "").length >= 7),
+          "Enter a valid phone number or leave it empty.",
+        )
+        .optional(),
+      city: z.string().trim().max(100).optional(),
+      province: z
+        .union([z.enum(provinces as [string, ...string[]]), z.literal("")])
+        .optional(),
+    })
+    .strict()
+    .refine(
+      (data) => Object.keys(data).length > 0,
+      "Enter your profile details.",
+    );
+  app.patch("/api/me/profile", async (req) => {
+    const u = requireUser(req);
+    const data = profileSchema.parse(req.body);
+    const previous = publicUser(u);
+    db.exec("BEGIN");
+    try {
+      if (data.name !== undefined)
+        run("UPDATE users SET name=? WHERE id=?", data.name, u.id);
+      run(
+        "INSERT INTO user_details(user_id,phone,city,province) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,city=excluded.city,province=excluded.province",
+        u.id,
+        data.phone ?? previous.phone,
+        data.city ?? previous.city,
+        data.province ?? previous.province,
+      );
+      audit(u.id, "profile.updated", u.id);
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+    return { user: publicUser(read("SELECT * FROM users WHERE id=?", u.id)!) };
+  });
+  app.post(
+    "/api/me/avatar",
+    { config: { rateLimit: { max: 10, timeWindow: "15 minutes" } } },
+    async (req) => {
+      const u = requireUser(req);
+      const photo = await req.file();
+      if (!photo) fail(400, "Choose a profile photo.");
+      if (
+        ![
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/heic",
+          "image/heif",
+        ].includes(photo.mimetype)
+      )
+        fail(400, "Use a JPEG, PNG, WebP or supported HEIC photo.");
+      const buffer = await photo.toBuffer();
+      let image: Buffer;
+      try {
+        image = await sharp(buffer, { limitInputPixels: 40000000 })
+          .rotate()
+          .resize(512, 512, { fit: "cover" })
+          .webp({ quality: 85 })
+          .toBuffer();
+      } catch {
+        fail(400, "This photo could not be read. Try a JPEG or PNG.");
+      }
+      const filename = `${randomUUID()}.webp`;
+      await writeFile(resolve(avatarDir, filename), image!);
+      let previous = "";
+      try {
+        previous =
+          read("SELECT avatar_url FROM user_details WHERE user_id=?", u.id)
+            ?.avatar_url || "";
+        run(
+          "INSERT INTO user_details(user_id,avatar_url) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET avatar_url=excluded.avatar_url",
+          u.id,
+          `/avatars/${filename}`,
+        );
+      } catch (error) {
+        await unlink(resolve(avatarDir, filename)).catch(() => {});
+        throw error;
+      }
+      if (previous)
+        await unlink(resolve(avatarDir, previous.split("/").pop()!)).catch(
+          () => {},
+        );
+      const latest = read("SELECT * FROM users WHERE id=?", u.id);
+      if (!latest) fail(401, "Your account is no longer available.");
+      return { user: publicUser(latest!) };
+    },
+  );
+  app.delete("/api/me/avatar", async (req) => {
+    const u = requireUser(req);
+    const previous = read(
+      "SELECT avatar_url FROM user_details WHERE user_id=?",
+      u.id,
+    )?.avatar_url;
+    run("UPDATE user_details SET avatar_url='' WHERE user_id=?", u.id);
+    if (previous)
+      await unlink(resolve(avatarDir, previous.split("/").pop()!)).catch(
+        () => {},
+      );
+    const latest = read("SELECT * FROM users WHERE id=?", u.id);
+    if (!latest) fail(401, "Your account is no longer available.");
+    return { user: publicUser(latest!) };
   });
   app.get("/api/me/export", async (req) => {
     const u = requireUser(req);
@@ -2002,7 +2146,15 @@ export async function buildApp(
     if (!(await verifyPassword(b.password, u.password)))
       fail(401, "Password is incorrect.");
     const photos = all("SELECT id FROM uploads WHERE owner_id=?", u.id);
+    const avatar = read(
+      "SELECT avatar_url FROM user_details WHERE user_id=?",
+      u.id,
+    )?.avatar_url;
     run("DELETE FROM users WHERE id=?", u.id);
+    if (avatar)
+      await unlink(resolve(avatarDir, avatar.split("/").pop()!)).catch(
+        () => {},
+      );
     await Promise.all(
       photos.map((r) =>
         unlink(resolve(uploadDir, `${r.id}.webp`)).catch(() => {}),
@@ -2095,7 +2247,11 @@ export async function buildApp(
       decorateReply: true,
     });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith("/api/") || req.url.startsWith("/uploads/"))
+      if (
+        req.url.startsWith("/api/") ||
+        req.url.startsWith("/uploads/") ||
+        req.url.startsWith("/avatars/")
+      )
         return reply.code(404).send({ message: "Not found." });
       return reply.sendFile("index.html");
     });

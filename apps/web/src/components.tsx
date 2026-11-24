@@ -23,7 +23,7 @@ import {
   Plus,
   CarFront,
   Send,
-  MessageCircle,
+  Mail,
 } from "lucide-react";
 import {
   brand,
@@ -46,7 +46,7 @@ export function Logo() {
   );
 }
 export function Layout({ children }: { children: ReactNode }) {
-  const { user, compare, saved, liveStatus, inbox } = useApp(),
+  const { user, compare, saved, inbox } = useApp(),
     [open, setOpen] = useState(false);
   return (
     <>
@@ -69,9 +69,6 @@ export function Layout({ children }: { children: ReactNode }) {
           </nav>
           <div className="nav-actions">
             <InstallAppButton className="button outline small desktop" />
-            <span className={`live-state ${liveStatus}`} role="status">
-              {liveStatus === "live" ? "● Live" : "○ Reconnecting"}
-            </span>
             <Link
               to="/garage"
               className="icon-link"
@@ -91,7 +88,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 aria-label={`Messages, ${inbox.unread} unread`}
                 title="Messages"
               >
-                <MessageCircle size={20} />
+                <Mail size={20} />
                 {inbox.unread > 0 && (
                   <sup aria-live="polite">
                     {inbox.unread > 99 ? "99+" : inbox.unread}
@@ -168,7 +165,7 @@ export function Layout({ children }: { children: ReactNode }) {
             aria-label={`Messages, ${inbox.unread} unread`}
           >
             <span className="inbox-icon">
-              <MessageCircle size={20} />
+              <Mail size={20} />
               {inbox.unread > 0 && (
                 <b className="unread-badge">
                   {inbox.unread > 99 ? "99+" : inbox.unread}
@@ -217,8 +214,12 @@ export function Empty({
   );
 }
 export function ErrorBox({ message }: { message: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [message]);
   return (
-    <div role="alert" className="error-box">
+    <div ref={ref} role="alert" className="error-box">
       {message}
     </div>
   );

@@ -1,3 +1,4 @@
+import { ProfilePanel } from "./ProfilePanel";
 import { startHostedCheckout } from "./checkout";
 import { NotificationsPanel, disableWebPush } from "./pwa";
 import { useEffect, useState, type FormEvent } from "react";
@@ -16,11 +17,10 @@ import {
   X,
   CarFront,
   Users,
-  Inbox,
+  Mail,
   ShieldCheck,
   LayoutDashboard,
   Clock,
-  Download,
   LogOut,
   Building2,
 } from "lucide-react";
@@ -144,9 +144,9 @@ export function Account() {
         <p className="lead">Your profile, your listings, your next chapter.</p>
 
         {error && <ErrorBox message={error} />}
+        <ProfilePanel user={user} />
         <div className="panel">
-          <h3>{user.name}</h3>
-          <p>{user.email}</p>
+          <h3>Account access</h3>
           <p className="status">
             {user.verified ? "Email verified" : "Email not verified"}
           </p>
@@ -181,32 +181,9 @@ export function Account() {
         </div>
         <NotificationsPanel />
         <div className="panel">
-          <h3>Your data belongs to you.</h3>
-          <p>Download your account information or remove your account.</p>
+          <h3>Account settings</h3>
+          <p>Manage your sign-in or remove your account.</p>
           <div className="button-row">
-            <button
-              className="button outline"
-              onClick={async () => {
-                try {
-                  const data = await api.get("/me/export");
-                  const u = URL.createObjectURL(
-                    new Blob([JSON.stringify(data, null, 2)], {
-                      type: "application/json",
-                    }),
-                  );
-                  const a = document.createElement("a");
-                  a.href = u;
-                  a.download = `${brand.slug}-account.json`;
-                  a.click();
-                  setTimeout(() => URL.revokeObjectURL(u), 1000);
-                } catch (e) {
-                  notify((e as Error).message);
-                }
-              }}
-            >
-              <Download size={16} />
-              Export my data
-            </button>
             <button
               className="button outline"
               onClick={async () => {
@@ -1148,7 +1125,7 @@ function WorkspaceContent() {
           {
             key: "leads",
             label: isAdmin ? "All enquiries" : "My enquiries",
-            icon: Inbox,
+            icon: Mail,
           },
           ...(isAdmin
             ? [
@@ -1161,7 +1138,7 @@ function WorkspaceContent() {
                 {
                   key: "payments",
                   label: "Advertisement payments",
-                  icon: Inbox,
+                  icon: Mail,
                 },
                 { key: "users", label: "People", icon: Users },
                 { key: "audit", label: "Activity log", icon: Clock },
