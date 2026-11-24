@@ -2879,24 +2879,6 @@ tr:last-child td {
   font-size: 24px;
   font-weight: 600;
 }
-.profile-photo-actions {
-  margin: 12px 0 20px;
-}
-.profile-photo-actions label {
-  position: relative;
-  cursor: pointer;
-}
-.profile-photo-actions input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-.profile-photo-actions label:focus-within {
-  outline: 2px solid var(--ink);
-  outline-offset: 3px;
-}
 .profile-form {
   margin-top: 24px;
 }
@@ -2977,4 +2959,122 @@ tr:last-child td {
 
 .profile-identity h3 {
   overflow-wrap: anywhere;
+}
+
+.profile-photo-control {
+  position: relative;
+  flex: 0 0 72px;
+  width: 72px;
+}
+.profile-photo-button {
+  display: block;
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.profile-photo-edit {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #141414;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #111;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.profile-photo-button:hover .profile-photo-edit,
+.profile-photo-button:focus-visible .profile-photo-edit,
+.profile-photo-button[aria-expanded="true"] .profile-photo-edit {
+  opacity: 1;
+}
+.profile-photo-button:focus-visible,
+.profile-edit-button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+.profile-photo-button:disabled,
+.profile-edit-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.profile-photo-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 25;
+  min-width: 160px;
+  padding: 6px;
+  background: #202020;
+  border: 1px solid #444;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px #0006;
+}
+.profile-photo-menu button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.profile-photo-menu button:hover,
+.profile-photo-menu button:focus-visible {
+  background: #333;
+  outline: none;
+}
+.profile-identity-copy {
+  flex: 1;
+}
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.profile-name-row h3 {
+  margin: 0;
+}
+.profile-edit-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+}
+.profile-edit-button:hover:not(:disabled) {
+  background: #252525;
+  color: var(--ink);
+}
+@media (hover: none), (pointer: coarse) {
+  .profile-photo-edit {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-photo-edit {
+    transition: none;
+  }
 }

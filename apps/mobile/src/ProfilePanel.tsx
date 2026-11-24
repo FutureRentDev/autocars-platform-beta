@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Keyboard,
   Modal,
@@ -110,6 +111,7 @@ export function ProfilePanel({
         accessibilityHint={errors[key]}
         editable={!busy}
         value={draft[key]}
+        autoFocus={key === "name"}
         maxLength={key === "phone" ? 30 : 100}
         onChangeText={(value) => {
           setDraft({ ...draft, [key]: value });
@@ -129,51 +131,78 @@ export function ProfilePanel({
   return (
     <View style={s.panel}>
       <View style={s.identity}>
-        {user.avatarUrl && !photoFailed ? (
-          <Image
-            source={{ uri: api.image(user.avatarUrl) }}
-            onError={() => setPhotoFailed(true)}
-            style={s.avatar}
-            accessibilityLabel="Your profile picture"
-          />
-        ) : (
-          <View style={[s.avatar, s.initials]}>
-            <Text style={s.initialsText}>
-              {user.name
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map((part) => part[0])
-                .join("")
-                .toUpperCase()}
-            </Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={s.title}>{user.name}</Text>
-          <Text style={s.meta}>{user.email}</Text>
-        </View>
-      </View>
-      <View style={s.actions}>
         <Pressable
           disabled={busy}
           accessibilityRole="button"
-          onPress={() => photo()}
-          style={s.smallButton}
+          accessibilityLabel="Edit profile photo"
+          accessibilityHint={
+            user.avatarUrl
+              ? "Choose a new photo or remove your current photo"
+              : "Choose a profile photo"
+          }
+          style={s.photoControl}
+          onPress={() =>
+            Alert.alert("Profile photo", undefined, [
+              {
+                text: "Change photo",
+                onPress: () => {
+                  void photo();
+                },
+              },
+              ...(user.avatarUrl
+                ? [
+                    {
+                      text: "Remove photo",
+                      style: "destructive" as const,
+                      onPress: () => {
+                        void photo(true);
+                      },
+                    },
+                  ]
+                : []),
+              { text: "Cancel", style: "cancel" },
+            ])
+          }
         >
-          <Ionicons name="camera-outline" size={18} color="#f2f2ee" />
-          <Text style={s.buttonText}>Change photo</Text>
+          {user.avatarUrl && !photoFailed ? (
+            <Image
+              source={{ uri: api.image(user.avatarUrl) }}
+              onError={() => setPhotoFailed(true)}
+              style={s.avatar}
+              accessibilityLabel="Your profile picture"
+            />
+          ) : (
+            <View style={[s.avatar, s.initials]}>
+              <Text style={s.initialsText}>
+                {user.name
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")
+                  .toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={s.photoEdit}>
+            <Ionicons name="camera-outline" size={16} color="#111" />
+          </View>
         </Pressable>
-        {!!user.avatarUrl && (
-          <Pressable
-            disabled={busy}
-            accessibilityRole="button"
-            onPress={() => photo(true)}
-            style={s.smallButton}
-          >
-            <Text style={s.buttonText}>Remove photo</Text>
-          </Pressable>
-        )}
+        <View style={{ flex: 1 }}>
+          <View style={s.nameRow}>
+            <Text style={[s.title, { flexShrink: 1 }]}>{user.name}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+              disabled={busy || editing}
+              onPress={() => setEditing(true)}
+              style={[s.editIcon, (busy || editing) && { opacity: 0.4 }]}
+            >
+              <Ionicons name="pencil-outline" size={18} color="#f2f2ee" />
+            </Pressable>
+          </View>
+          <Text style={s.meta}>{user.email}</Text>
+        </View>
       </View>
       {busy && (
         <ActivityIndicator
@@ -231,15 +260,6 @@ export function ProfilePanel({
               {[user.city, user.province].filter(Boolean).join(", ")}
             </Text>
           )}
-          <Pressable
-            disabled={busy}
-            accessibilityRole="button"
-            onPress={() => setEditing(true)}
-            style={s.smallButton}
-          >
-            <Text style={s.buttonText}>Edit profile</Text>
-            <Ionicons name="create-outline" color="#f2f2ee" size={18} />
-          </Pressable>
         </>
       )}
       <Modal
@@ -297,6 +317,27 @@ const s = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     backgroundColor: "#252525",
+  },
+  photoControl: { width: 72, height: 72 },
+  photoEdit: {
+    position: "absolute",
+    right: -3,
+    bottom: -3,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#141414",
+    backgroundColor: "#f2f2ee",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  editIcon: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   initials: { alignItems: "center", justifyContent: "center" },
   initialsText: { color: "#f2f2ee", fontSize: 24, fontWeight: "600" },
