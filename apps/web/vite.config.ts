@@ -10,7 +10,8 @@ const iconRevision = createHash("sha256")
   .update(readFileSync(new URL("./public/icon-512.png", import.meta.url)))
   .digest("hex")
   .slice(0, 12);
-const iconUrl = (name: string) => `/${name}?brand=${iconRevision}`;
+const iconUrl = (name: string) =>
+  `/brand-icons/${name.replace(/(\.[a-z]+)$/, `.${iconRevision}$1`)}`;
 const apiPort =
   process.env.PORT ||
   loadEnv("development", fileURLToPath(new URL("../../", import.meta.url)), "")
@@ -32,7 +33,7 @@ export default defineConfig({
             `<title>${brand.name} — ${brand.tagline}</title>`,
           )
           .replace(
-            /href="\/(icon\.svg|apple-touch-icon\.png)"/g,
+            /href="\/(favicon\.(?:png|ico)|apple-touch-icon\.png)"/g,
             (_, name: string) => `href="${iconUrl(name)}"`,
           );
       },
@@ -50,7 +51,7 @@ export default defineConfig({
         navigateFallback: "index.html",
       },
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,png,jpg,svg,webp}"],
+        globPatterns: ["**/*.{js,css,html,png,jpg,svg,webp,ico}"],
         rollupFormat: "iife",
       },
       includeAssets: [
@@ -58,6 +59,8 @@ export default defineConfig({
         "icon.svg",
         "apple-touch-icon.png",
         "badge.png",
+        "favicon.png",
+        "favicon.ico",
       ],
       manifest: {
         id: "/",

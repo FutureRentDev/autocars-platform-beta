@@ -19,6 +19,31 @@ for (const size of ["192x192", "512x512"]) {
 const html = await readFile(resolve(root, "index.html"), "utf8");
 assert.match(html, /rel="manifest"/);
 assert.match(html, /apple-touch-icon/);
+// A missing favicon can fall through to the SPA's HTML with HTTP 200.
+// Check the actual published file bytes, not just whether the link exists.
+const faviconLinks = [
+  ...html.matchAll(
+    /<link\b[^>]*rel="(?:icon|shortcut icon)"[^>]*href="([^"]+)"[^>]*>/g,
+  ),
+];
+assert.ok(faviconLinks.length, "Missing favicon links");
+for (const [, href] of faviconLinks) {
+  const pathname = new URL(href, "https://autocars.example").pathname;
+  const bytes = await readFile(resolve(root, pathname.replace(/^\//, "")));
+  if (pathname.endsWith(".png")) {
+    assert.equal(
+      bytes.subarray(0, 8).toString("hex"),
+      "89504e470d0a1a0a",
+      "Favicon must be a real PNG",
+    );
+  } else if (pathname.endsWith(".ico")) {
+    assert.equal(
+      bytes.subarray(0, 4).toString("hex"),
+      "00000100",
+      "Favicon must be a real ICO",
+    );
+  } else assert.fail("Use a PNG/ICO favicon for reliable browser support");
+}
 const handlers = new Map(),
   shown = [],
   opened = [];
